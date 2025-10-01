@@ -23,16 +23,18 @@ Character:: Character(tuple<int, int> position, tuple<int, int> patrol_range){
     this->patrol_range = patrol_range;
     this->max_frame = action.maxframe;
     this->surface = action.surface;
-    
+    this->srcRect = {0, 0, 32, 48};
+    this->dstRect = {get<0>(position), get<1>(position), 32*2, 48*2};
 }
 Character:: ~Character(){
     SDL_DestroySurface(this->surface);
 }
 void Character::update_position(){
     this->current_frame = (this->current_frame +1) % this->max_frame;
-    get<0>(this->position) += 10;
     this->srcRect.x = this->current_frame*32;
-    // this->dstRect.x += this->speed;
+    if(this->status == PlayerAction::MoveForward  && this->dstRect.x < get<1>(this->patrol_range)) this->dstRect.x += this->speed;
+    else if(this->status == PlayerAction::MoveBackward  && this->dstRect.x > get<0>(this->patrol_range)) this->dstRect.x -= (this->speed*3)/5;
+    get<0>(this->position) = this->dstRect.x;
 }
 void Character::render(SDL_Surface* screenSurface){
     SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
