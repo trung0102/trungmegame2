@@ -36,10 +36,10 @@ private:
     tuple<int, int> patrol_range;
     int current_frame = 0;
     int max_frame;
-    int speed = 0.5;
+    int speed = 7;
     SDL_Surface* surface;
-    SDL_Rect srcRect = {0, 0, 32, 48};
-    SDL_Rect dstRect = {500, 500, 32*2, 48*2};
+    SDL_Rect srcRect;
+    SDL_Rect dstRect;
 
 public:
     Character(tuple<int, int> position, tuple<int, int> patrol_range);
