@@ -1,0 +1,18 @@
+# Build files
+build/
+*.o
+beach_volleyball
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Compiled
+*.exe
+*.out
+*.app

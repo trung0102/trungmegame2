@@ -1,0 +1,71 @@
+# Makefile for Beach Volleyball Game (Refactored)
+
+# Compiler
+CXX = g++
+
+# Target executable
+TARGET = beach_volleyball
+
+# Directories
+SRC_DIR = src
+INC_DIR = include
+BUILD_DIR = build
+
+# Compiler flags
+CXXFLAGS = -std=c++11 -Wall -Wextra -I$(INC_DIR)
+LDFLAGS = -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf
+
+# Detect OS
+UNAME := $(shell uname -s)
+
+ifeq ($(UNAME), Darwin)
+    # macOS
+    CXXFLAGS += -I/opt/homebrew/include -I/usr/local/include
+    LDFLAGS += -L/opt/homebrew/lib -L/usr/local/lib
+else ifeq ($(UNAME), Linux)
+    # Linux
+    CXXFLAGS += $(shell pkg-config --cflags sdl2 SDL2_mixer)
+    LDFLAGS = $(shell pkg-config --libs sdl2 SDL2_mixer)
+else
+    # Windows (MinGW)
+    CXXFLAGS += -I/mingw64/include/SDL2
+    LDFLAGS += -L/mingw64/lib -lmingw32 -lSDL2main -lSDL2 -lSDL2_mixer
+endif
+
+# Source files
+SOURCES = $(SRC_DIR)/main.cpp \
+          $(SRC_DIR)/Player.cpp \
+          $(SRC_DIR)/AIPlayer.cpp \
+          $(SRC_DIR)/Ball.cpp \
+          $(SRC_DIR)/Game.cpp \
+          $(SRC_DIR)/GameRender.cpp
+
+# Object files
+OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
+
+# Targets
+.PHONY: all clean run
+
+all: $(BUILD_DIR) $(TARGET)
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(TARGET): $(OBJECTS)
+	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
+
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	rm -rf $(BUILD_DIR) $(TARGET)
+
+run: $(TARGET)
+	./$(TARGET)
+
+# Show build info
+info:
+	@echo "System: $(UNAME)"
+	@echo "Compiler: $(CXX)"
+	@echo "Sources: $(SOURCES)"
+	@echo "Objects: $(OBJECTS)"
