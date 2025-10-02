@@ -7,6 +7,7 @@ and may not be redistributed without written permission.*/
 #include <SDL3_image/SDL_image.h>
 #include <string>
 #include "bot.h"
+#include <vector>
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 1000;
@@ -117,20 +118,20 @@ int main( int argc, char* args[] )
 		else
 		{	
 			//Hack to get window to stay up
-			const int targetFPS = 15; // FPS mục tiêu
+			const int targetFPS = 25; // FPS mục tiêu
     		const Uint64 frameTime = 1000 / targetFPS; // Thời gian mỗi khung hình (ms)
             SDL_Event e; bool quit = false;
-			Character* character = new Character(make_tuple(50,400), make_tuple(0,410));
+			vector<Character*> characters;
+			characters.push_back( new Character(make_tuple(50,400), make_tuple(0,410)));
 			Ball* ball = new Ball(make_tuple(0,400));
 			while( quit == false ){ 
 				Uint64 frameStart = SDL_GetTicks();
 				while( SDL_PollEvent( &e ) ){ 
 					if( e.type == SDL_EVENT_QUIT ) quit = true; 
-					else if (e.type ==  SDL_EVENT_KEY_DOWN){
-						character->getKeyboardEvent(e.key);
-					}
-					else if (e.type ==  SDL_EVENT_KEY_UP){
-						character->getKeyboardEvent(e.key);
+					else if (e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP){
+						for (auto character : characters) {
+        					character->getKeyboardEvent(e.key);
+    					}
 					}
 					else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
 						std::cout << "Mouse button pressed at: ("
@@ -139,12 +140,18 @@ int main( int argc, char* args[] )
 
 				}
 				drawMap();
-				character->update_position();
-				character->render(gScreenSurface);
+				for (auto character : characters) {
+					character->update_position();
+					character->render(gScreenSurface);
+					if(!ball->Isdead()){
+						ball->checkCollision(character);
+					}
+				}
 				if(!ball->Isdead()){
 					ball->update_position();
 					ball->render(gScreenSurface);
 				}
+				
 				SDL_UpdateWindowSurface(gWindow);
 				Uint64 frameEnd = SDL_GetTicks(); // Thời gian kết thúc khung hình
 				Uint64 frameDuration = frameEnd - frameStart; // Thời gian xử lý khung hình
@@ -153,7 +160,10 @@ int main( int argc, char* args[] )
 					SDL_Delay(frameTime - frameDuration); // Tạm dừng để đạt FPS mục tiêu
         		} 
 			}
-			delete character;
+			for (auto c : characters) {
+				delete c;
+			}
+			characters.clear();
 			delete ball;
 		}
 	}

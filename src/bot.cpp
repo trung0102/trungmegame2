@@ -12,7 +12,7 @@ unordered_map<PlayerAction, ActionData> actionData = {
     { PlayerAction::Pass,           {11, loadSurface("assets/playerReception.png")} },
 };
 
-Character:: Character(tuple<int, int> position, tuple<int, int> patrol_range){
+Character:: Character(tuple<int, int> position, tuple<int, int> patrol_range,string name){
     ActionData action = actionData[this->status];
     this->position = position;
     this->patrol_range = patrol_range;
@@ -20,6 +20,7 @@ Character:: Character(tuple<int, int> position, tuple<int, int> patrol_range){
     this->surface = action.surface;
     this->srcRect = {0, 0, 32, 48};
     this->dstRect = {get<0>(position), get<1>(position), 32*2, 48*2};
+    this->name = name;
 }
 Character:: ~Character(){
     SDL_DestroySurface(this->surface);
@@ -46,13 +47,14 @@ void Character::update_position(){
 void Character::render(SDL_Surface* screenSurface){
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
+
     SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
 }
 void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
     PlayerAction curr_status = this->status;
     if (keyEvent.type == SDL_EVENT_KEY_UP){
         if(this->y0){ 
-                cout<<this->y0<<endl;
+                // cout<<this->y0<<endl;
                 get<1>(this->position) = this->y0;
                 this->y0=0;
             }
@@ -62,13 +64,13 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
         if(keyEvent.scancode == SDL_SCANCODE_W){
             if(!this->y0){ 
                 this->y0 = get<1>(this->position);
-                cout<<this->y0<<endl;
+                // cout<<this->y0<<endl;
             }
             this->status = PlayerAction::Spike;
         }
         else{
             if(this->y0){ 
-                cout<<this->y0<<endl;
+                // cout<<this->y0<<endl;
                 get<1>(this->position) = this->y0;
                 this->y0=0;
             }
@@ -91,7 +93,25 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
     this->surface = action.surface;
 }
 
-
+CharCollisionBall Character::checkCollision(const SDL_Rect& b){
+    CharCollisionBall ret;
+    SDL_Rect a;
+    if(this->status == PlayerAction::Pass){
+        a = {this->dstRect.x + 35, this->dstRect.y + 45, 30,30};
+    }
+    else{
+        a ={0,0,0,0};
+    }
+    if(a.x + a.w < b.x || a.x > b.x + b.w || a.y + a.h < b.y || a.y > b.y + b.h){ 
+        ret.is_collision = false;
+    }
+    else{
+        ret.is_collision = true;
+        ret.v0 = 80;
+        ret.alpha = 85*M_PI/180;
+    }
+    return ret;
+}
 
 
 
@@ -171,8 +191,8 @@ Ball:: Ball(tuple<int, int> position){
     this->surface = loadSurface("assets/ballRoll.png");
     this->srcRect = {0, 5, 15, 15};
     this->dstRect = {get<0>(position), get<1>(position), 15*2, 15*2};
-    this->motition = new MotionEquation(18*M_PI/180, 70, get<0>(position), get<1>(position));
-    cout<< this->motition->print()<<endl;
+    this->motition = new MotionEquation(85*M_PI/180, 40, get<0>(position), get<1>(position));
+    // cout<< this->motition->print()<<endl;
 }
 Ball:: ~Ball(){
     SDL_DestroySurface(this->surface);
@@ -181,17 +201,17 @@ Ball:: ~Ball(){
 void Ball::update_position(){
     this->current_frame = (this->current_frame +1) % (this->max_frame*2);
     tuple<int,int> pos_ball = this->motition->position(0.067);
-    cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
+    // cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
     this->position = pos_ball;
     if(get<1>(this->position) > SAN_BALL) {
         get<1>(this->position) = SAN_BALL;
         this->collide("SAN");
     }
-    // else if (487 <= get<0>(this->position) + 30 && 502 >= get<0>(this->position) + 30 &&
-    //      364 <= get<1>(this->position) + 30 && 479 >= get<1>(this->position) + 30) {
-    //     // cout << "hahahaha" << endl;
-    //     this->collide("Net");
-    // }
+    else if (487 <= get<0>(this->position) + 30 && 502 >= get<0>(this->position) + 30 &&
+         364 <= get<1>(this->position) + 30 && 479 >= get<1>(this->position) + 30) {
+        // cout << "hahahaha" << endl;
+        this->collide("Net");
+    }
     this->srcRect.x = (int(this->current_frame/2)%this->max_frame)*15;
 }
 
@@ -212,11 +232,11 @@ void Ball::collide(string str){
     Vec2 a = this->motition->direction_vector(get<0>(this->position));
     Vec2 a2 = a - Oy.normalize() * (2.0f * a.dot(Oy.normalize()));
     float costheta = sqrt(a2.dot(Ox)*a2.dot(Ox)/a2.dodaibinh()*Ox.dodaibinh());
-    cout<<"cosx "<<costheta<<endl;
+    // cout<<"cosx "<<costheta<<endl;
     float theta = acos(costheta);
     if(str == "Net") theta = base - theta;
     if(theta > M_PI/2 && base == 0){theta = 0;}
-    cout<<"theta "<<theta<<endl;
+    // cout<<"theta "<<theta<<endl;
     double v0 = this->motition->getV0() * 0.75;
     delete this->motition;
     this->motition = new MotionEquation(theta, v0, get<0>(this->position), get<1>(this->position));
@@ -226,6 +246,14 @@ void Ball::render(SDL_Surface* screenSurface){
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
     SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
+}
+
+void Ball::checkCollision(Character* character){
+    CharCollisionBall ele = character->checkCollision(this->dstRect);
+    if(ele.is_collision){
+        delete this->motition;
+        motition = new MotionEquation(ele.alpha, ele.v0, get<0>(this->position), get<1>(this->position));
+    }
 }
 
 

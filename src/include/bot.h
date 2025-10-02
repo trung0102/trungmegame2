@@ -27,6 +27,11 @@ struct ActionData{
 
 struct Vec2;
 
+struct CharCollisionBall{
+    bool is_collision;
+    float v0;
+    float alpha;
+};
 
 // Map từ enum -> dữ liệu
 extern unordered_map<PlayerAction, ActionData> actionData;
@@ -45,13 +50,15 @@ private:
     SDL_Rect srcRect;
     SDL_Rect dstRect;
     int y0 = 0;
+    string name;
 
 public:
-    Character(tuple<int, int> position, tuple<int, int> patrol_range);
+    Character(tuple<int, int> position, tuple<int, int> patrol_range, string name = "Char1");
     ~Character();
     void render(SDL_Surface* screenSurface);
     void update_position();
     void getKeyboardEvent(SDL_KeyboardEvent keyEvent);
+    CharCollisionBall checkCollision(const SDL_Rect& b);
 };
 
 // inline float deg2rad(float deg){ return deg * 3.14159265358979323846f / 180.0f; }
@@ -92,4 +99,5 @@ public:
     void render(SDL_Surface* screenSurface);
     void collide(string str);
     bool Isdead(){ return this->isdead == 5;}
+    void checkCollision(Character* character);
 };
