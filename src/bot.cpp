@@ -3,27 +3,28 @@
 const int SAN_BALL = 455;
 
 unordered_map<PlayerAction, ActionData> actionData = {
-    { PlayerAction::Idle,           {12, loadSurface("assets/playerIdle.png")} },
-    { PlayerAction::MoveForward,    {12, loadSurface("assets/playerRun.png")} },
-    { PlayerAction::MoveBackward,   {12, loadSurface("assets/playerRun.png")} },
-    { PlayerAction::Spike,          {13, loadSurface("assets/playerSmash.png")} },
-    { PlayerAction::Block,          {13, loadSurface("assets/playerBlock.png")} },
-    { PlayerAction::Dive,           {15, loadSurface("assets/playerSlide.png")} },
-    { PlayerAction::Pass,           {11, loadSurface("assets/playerReception.png")} },
+    { PlayerAction::Idle,           {12, "assets/playerIdle.png"} },
+    { PlayerAction::MoveForward,    {12, "assets/playerRun.png"} },
+    { PlayerAction::MoveBackward,   {12, "assets/playerRun.png"} },
+    { PlayerAction::Spike,          {13, "assets/playerSmash.png"} },
+    { PlayerAction::Block,          {13, "assets/playerBlock.png"} },
+    { PlayerAction::Dive,           {15, "assets/playerSlide.png"} },
+    { PlayerAction::Pass,           {11, "assets/playerReception.png"} },
 };
 
-Character:: Character(tuple<int, int> position, tuple<int, int> patrol_range,string name){
+Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range,string name){
     ActionData action = actionData[this->status];
     this->position = position;
     this->patrol_range = patrol_range;
     this->max_frame = action.maxframe;
-    this->surface = action.surface;
+    this->surface = loadTexture(action.surface, gRenderer);
     this->srcRect = {0, 0, 32, 48};
-    this->dstRect = {get<0>(position), get<1>(position), 32*2, 48*2};
+    this->dstRect = {float(get<0>(position)), float(get<1>(position)), 32*2, 48*2};
     this->name = name;
+    this->gRenderer = gRenderer;
 }
 Character:: ~Character(){
-    SDL_DestroySurface(this->surface);
+    SDL_DestroyTexture(this->surface);
 }
 void Character::update_position(){
     this->current_frame = (this->current_frame +1) % this->max_frame;
@@ -44,11 +45,11 @@ void Character::update_position(){
     }
     
 }
-void Character::render(SDL_Surface* screenSurface){
+void Character::render(){
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
-
-    SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
+    SDL_RenderTexture(this->gRenderer, this->surface, &srcRect, &dstRect);
+    // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
 }
 void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
     PlayerAction curr_status = this->status;
@@ -90,12 +91,12 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
     if(curr_status != this->status) this->current_frame = 0;
     ActionData action = actionData[status];
     this->max_frame = action.maxframe;
-    this->surface = action.surface;
+    this->surface = loadTexture(action.surface, this->gRenderer);
 }
 
-CharCollisionBall Character::checkCollision(const SDL_Rect& b){
+CharCollisionBall Character::checkCollision(const SDL_FRect& b){
     CharCollisionBall ret;
-    SDL_Rect a;
+    SDL_FRect a;
     if(this->status == PlayerAction::Pass){
         a = {this->dstRect.x + 35, this->dstRect.y + 45, 30,30};
     }
@@ -188,14 +189,14 @@ Ball:: Ball(tuple<int, int> position){
     this->current_frame = 0;
     this->position = position;
     this->max_frame = 8;
-    this->surface = loadSurface("assets/ballRoll.png");
+    // this->surface = loadSurface("assets/ballRoll.png");
     this->srcRect = {0, 5, 15, 15};
-    this->dstRect = {get<0>(position), get<1>(position), 15*2, 15*2};
+    this->dstRect = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
     this->motition = new MotionEquation(85*M_PI/180, 40, get<0>(position), get<1>(position));
     // cout<< this->motition->print()<<endl;
 }
 Ball:: ~Ball(){
-    SDL_DestroySurface(this->surface);
+    SDL_DestroyTexture(this->surface);
     delete this->motition;
 }
 void Ball::update_position(){
@@ -242,10 +243,10 @@ void Ball::collide(string str){
     this->motition = new MotionEquation(theta, v0, get<0>(this->position), get<1>(this->position));
 }
 
-void Ball::render(SDL_Surface* screenSurface){
+void Ball::render(SDL_Texture* screenSurface){
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
-    SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
+    // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
 }
 
 void Ball::checkCollision(Character* character){
@@ -258,10 +259,10 @@ void Ball::checkCollision(Character* character){
 
 
 
-SDL_Surface* loadSurface( std::string path)
+SDL_Texture* loadTexture( std::string path, SDL_Renderer* gRenderer)
 {
-	//The final optimized image
-	SDL_Surface* optimizedSurface = NULL;
+	//The final texture
+	SDL_Texture* newTexture = NULL;
 
 	//Load image at specified path
 	SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
@@ -271,16 +272,16 @@ SDL_Surface* loadSurface( std::string path)
 	}
 	else
 	{
-		//Convert surface to screen format
-		optimizedSurface = SDL_ConvertSurface( loadedSurface, SDL_PIXELFORMAT_RGBA8888 );
-		if( optimizedSurface == NULL )
+		//Create texture from surface pixels
+		newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+		if( newTexture == NULL )
 		{
-			SDL_Log( "Unable to optimize image %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+			SDL_Log( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
 		}
 
 		//Get rid of old loaded surface
 		SDL_DestroySurface( loadedSurface );
 	}
 
-	return optimizedSurface;
+	return newTexture;
 }

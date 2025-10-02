@@ -24,14 +24,15 @@ void close();
 
 //The window we'll be rendering to
 SDL_Window* gWindow = NULL;
-	
-//The surface contained by the window
-SDL_Surface* gScreenSurface = NULL;
+
+//The window renderer
+SDL_Renderer* gRenderer = NULL;
 
 //Current displayed PNG image
-SDL_Surface* VCourtSurface = NULL;
-SDL_Surface* VNetSurface = NULL;
+SDL_Texture* VCourtTexture = NULL;
+SDL_Texture* VNetTexture = NULL;
 int netframe = 0;
+
 bool init()
 {
 	//Initialization flag
@@ -45,17 +46,16 @@ bool init()
 	}
 	else
 	{
-		//Create window
-		gWindow = SDL_CreateWindow( "SDL Tutorial", SCREEN_WIDTH, SCREEN_HEIGHT, 0 );
-		if( gWindow == NULL )
+		//Create window and renderer
+		if( !SDL_CreateWindowAndRenderer( "SDL Tutorial", SCREEN_WIDTH, SCREEN_HEIGHT, 0, &gWindow, &gRenderer ) )
 		{
-			SDL_Log( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
+			SDL_Log( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
 			success = false;
 		}
 		else
 		{
-			//Get window surface
-			gScreenSurface = SDL_GetWindowSurface( gWindow );
+			//Initialize renderer color
+			SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
 		}
 	}
 
@@ -66,11 +66,11 @@ bool loadMedia()
 {
 	//Loading success flag
 	bool success = true;
-
+	
 	//Load PNG surface
-	VCourtSurface = loadSurface( "assets/beachbkgIso.png" );
-	VNetSurface = loadSurface( "assets/net0.png" );
-	if( VCourtSurface == NULL )
+	VCourtTexture = loadTexture( "assets/beachbkgIso.png", gRenderer );
+	VNetTexture = loadTexture( "assets/net0.png", gRenderer );
+	if( VCourtTexture == NULL )
 	{
 		SDL_Log( "Failed to load PNG image!\n" );
 		success = false;
@@ -79,23 +79,27 @@ bool loadMedia()
 	return success;
 }
 void drawMap(){
-	SDL_Rect srcRect = {0, 0, 400, 430};
-	SDL_Rect dstRect = {0, 0, 1000, 750};
-	SDL_BlitSurfaceScaled(VCourtSurface, &srcRect, gScreenSurface, &dstRect, SDL_SCALEMODE_LINEAR);
-	srcRect = {(int(netframe/3)%6)*45, 0, 45, 450};
+	SDL_FRect srcRect = {0, 0, 400, 430};
+	SDL_FRect dstRect = {0, 0, 1000, 750};
+	SDL_RenderTexture(gRenderer, VCourtTexture, &srcRect, &dstRect);
+	srcRect = {((netframe/3)%6)*45.0f, 0, 45, 450};
 	dstRect = {450, 60, 100, 690};
-	SDL_BlitSurfaceScaled(VNetSurface, &srcRect, gScreenSurface, &dstRect, SDL_SCALEMODE_LINEAR);
+	SDL_RenderTexture(gRenderer, VNetTexture, &srcRect, &dstRect);
 	netframe = ((netframe +1))%18;
 }
 void close()
 {
 	//Free loaded image
-	SDL_DestroySurface( VCourtSurface );
-	VCourtSurface = NULL;
+	SDL_DestroyTexture( VCourtTexture );
+	VCourtTexture = NULL;
+	SDL_DestroyTexture( VNetTexture );
+	VNetTexture = NULL;
 
-	//Destroy window
+	//Destroy window	
+	SDL_DestroyRenderer( gRenderer );
 	SDL_DestroyWindow( gWindow );
 	gWindow = NULL;
+	gRenderer = NULL;
 
 	//Quit SDL subsystems
 	SDL_Quit();
@@ -122,7 +126,7 @@ int main( int argc, char* args[] )
     		const Uint64 frameTime = 1000 / targetFPS; // Thời gian mỗi khung hình (ms)
             SDL_Event e; bool quit = false;
 			vector<Character*> characters;
-			characters.push_back( new Character(make_tuple(50,400), make_tuple(0,410)));
+			characters.push_back( new Character(gRenderer, make_tuple(50,400), make_tuple(0,410)));
 			Ball* ball = new Ball(make_tuple(0,400));
 			while( quit == false ){ 
 				Uint64 frameStart = SDL_GetTicks();
@@ -142,17 +146,19 @@ int main( int argc, char* args[] )
 				drawMap();
 				for (auto character : characters) {
 					character->update_position();
-					character->render(gScreenSurface);
-					if(!ball->Isdead()){
-						ball->checkCollision(character);
-					}
-				}
-				if(!ball->Isdead()){
-					ball->update_position();
-					ball->render(gScreenSurface);
+					character->render();
+				// 	if(!ball->Isdead()){
+				// 		ball->checkCollision(character);
+				// 	}
+				// }
+				// if(!ball->Isdead()){
+				// 	ball->update_position();
+				// 	ball->render(gScreenSurface);
 				}
 				
-				SDL_UpdateWindowSurface(gWindow);
+				//Update screen
+				SDL_RenderPresent( gRenderer );
+
 				Uint64 frameEnd = SDL_GetTicks(); // Thời gian kết thúc khung hình
 				Uint64 frameDuration = frameEnd - frameStart; // Thời gian xử lý khung hình
 

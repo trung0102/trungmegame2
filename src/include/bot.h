@@ -7,7 +7,8 @@
 #include <cmath>
 using namespace std;
 
-SDL_Surface* loadSurface( std::string path);
+extern SDL_Renderer* gRenderer;
+SDL_Texture* loadTexture( std::string path, SDL_Renderer* gRenderer);
 
 enum class PlayerAction {
     Idle,                           // dung yen
@@ -21,7 +22,7 @@ enum class PlayerAction {
 
 struct ActionData{
     int maxframe;
-    SDL_Surface* surface;
+    string surface;
 }; 
 // maxframe, url_asset
 
@@ -46,19 +47,20 @@ private:
     int current_frame = 0;
     int max_frame;
     int speed = 12;
-    SDL_Surface* surface;
-    SDL_Rect srcRect;
-    SDL_Rect dstRect;
+    SDL_Texture* surface;
+    SDL_FRect srcRect;
+    SDL_FRect dstRect;
     int y0 = 0;
     string name;
+    SDL_Renderer* gRenderer;
 
 public:
-    Character(tuple<int, int> position, tuple<int, int> patrol_range, string name = "Char1");
+    Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range, string name = "Char1");
     ~Character();
-    void render(SDL_Surface* screenSurface);
+    void render();
     void update_position();
     void getKeyboardEvent(SDL_KeyboardEvent keyEvent);
-    CharCollisionBall checkCollision(const SDL_Rect& b);
+    CharCollisionBall checkCollision(const SDL_FRect& b);
 };
 
 // inline float deg2rad(float deg){ return deg * 3.14159265358979323846f / 180.0f; }
@@ -85,9 +87,9 @@ private:
     int max_frame;
     int speed = 0.5;
     tuple<int, int> position;
-    SDL_Surface* surface;
-    SDL_Rect srcRect;
-    SDL_Rect dstRect;
+    SDL_Texture* surface;
+    SDL_FRect srcRect;
+    SDL_FRect dstRect;
     MotionEquation * motition = nullptr;
     int idex = 0;
     int isdead = 0;
@@ -96,7 +98,7 @@ public:
     Ball(tuple<int, int> position);
     ~Ball();
     void update_position();
-    void render(SDL_Surface* screenSurface);
+    void render(SDL_Texture* screenSurface);
     void collide(string str);
     bool Isdead(){ return this->isdead == 5;}
     void checkCollision(Character* character);
