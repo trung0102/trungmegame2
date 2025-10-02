@@ -121,6 +121,7 @@ int main( int argc, char* args[] )
     		const Uint64 frameTime = 1000 / targetFPS; // Thời gian mỗi khung hình (ms)
             SDL_Event e; bool quit = false;
 			Character* character = new Character(make_tuple(50,400), make_tuple(0,410));
+			Ball* ball = new Ball(make_tuple(0,400));
 			while( quit == false ){ 
 				Uint64 frameStart = SDL_GetTicks();
 				while( SDL_PollEvent( &e ) ){ 
@@ -131,11 +132,19 @@ int main( int argc, char* args[] )
 					else if (e.type ==  SDL_EVENT_KEY_UP){
 						character->getKeyboardEvent(e.key);
 					}
+					else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
+						std::cout << "Mouse button pressed at: ("
+                              << e.button.x << ", " << e.button.y << ")\n";
+					}
 
 				}
 				drawMap();
 				character->update_position();
 				character->render(gScreenSurface);
+				if(!ball->Isdead()){
+					ball->update_position();
+					ball->render(gScreenSurface);
+				}
 				SDL_UpdateWindowSurface(gWindow);
 				Uint64 frameEnd = SDL_GetTicks(); // Thời gian kết thúc khung hình
 				Uint64 frameDuration = frameEnd - frameStart; // Thời gian xử lý khung hình
@@ -145,6 +154,7 @@ int main( int argc, char* args[] )
         		} 
 			}
 			delete character;
+			delete ball;
 		}
 	}
 
