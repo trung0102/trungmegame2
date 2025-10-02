@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <tuple>
 #include <iostream>
+#include <cmath>
 using namespace std;
 
 SDL_Surface* loadSurface( std::string path);
@@ -24,6 +25,9 @@ struct ActionData{
 }; 
 // maxframe, url_asset
 
+struct Vec2;
+
+
 // Map từ enum -> dữ liệu
 extern unordered_map<PlayerAction, ActionData> actionData;
 
@@ -36,10 +40,11 @@ private:
     tuple<int, int> patrol_range;
     int current_frame = 0;
     int max_frame;
-    int speed = 7;
+    int speed = 12;
     SDL_Surface* surface;
     SDL_Rect srcRect;
     SDL_Rect dstRect;
+    int y0 = 0;
 
 public:
     Character(tuple<int, int> position, tuple<int, int> patrol_range);
@@ -49,6 +54,22 @@ public:
     void getKeyboardEvent(SDL_KeyboardEvent keyEvent);
 };
 
+// inline float deg2rad(float deg){ return deg * 3.14159265358979323846f / 180.0f; }
+class MotionEquation
+{
+private:
+    float alpha;    // vị trí ban đầu
+    float v0,x0,y0;    // vận tốc ban đầu, tọa độ ban đầu
+    float a,b,c;     // ax2 + bx + c
+    int idx = 1;
+public:
+    MotionEquation(float alpha, float v0,float x0 =0,float y0=0);
+    ~MotionEquation();
+    tuple<int,int> position(float dt);
+    string print();
+    Vec2 direction_vector(float x0);
+    float getV0() {return this->v0;}
+};
 class Ball
 {
 private:
@@ -58,12 +79,17 @@ private:
     int speed = 0.5;
     tuple<int, int> position;
     SDL_Surface* surface;
-    SDL_Rect srcRect = {0, 0, 32, 48};
-    SDL_Rect dstRect = {500, 500, 32*2, 48*2};
+    SDL_Rect srcRect;
+    SDL_Rect dstRect;
+    MotionEquation * motition = nullptr;
+    int idex = 0;
+    int isdead = 0;
     
 public:
-    Ball(tuple<int, int> position, int max_frame);
+    Ball(tuple<int, int> position);
     ~Ball();
     void update_position();
     void render(SDL_Surface* screenSurface);
+    void collide(string str);
+    bool Isdead(){ return this->isdead == 5;}
 };
