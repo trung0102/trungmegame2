@@ -52,11 +52,11 @@ void Character::update_position(){
         if(dk1){get<0>(this->position) = tmp;}
         if(this->current_frame < 6){
             // cout<<"nhay"<<endl;
-            get<1>(this->position) -= 15;
+            get<1>(this->position) -= 30;
         }   
         else if(this->current_frame > 6){
             // cout<<"ha"<<endl;
-            get<1>(this->position) += 15;
+            get<1>(this->position) += 30;
         }
     }
     
@@ -118,6 +118,11 @@ CharCollisionBall Character::checkCollision(const SDL_FRect& b){
     if(this->status == PlayerAction::Pass){
         a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 35, this->dstRect.y + 45, 30,30}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 45, 30,30};
     }
+    else if(this->status == PlayerAction::Spike){
+        if(this->current_frame >5 && this->current_frame <8){
+            a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 20, this->dstRect.y + 20, 30,30}:SDL_FRect{this->dstRect.x+24, this->dstRect.y + 20, 30,30};
+        }
+    }
     else{
         a ={0,0,0,0};
     }
@@ -126,11 +131,12 @@ CharCollisionBall Character::checkCollision(const SDL_FRect& b){
     }
     else{
         ret.is_collision = true;
-        ret.v0 = 80;
+        ret.v0 = (this->status == PlayerAction::Spike)?200:80;
         int value = rand() % (80 - 60 + 1) + 60;    // random tu 75 den 85
         // cout<<value<<endl;
         ret.alpha = (this->keymap == LeftKeys)?value*M_PI/180:(180-value)*M_PI/180;
     }
+    ret.action = this->status;
     return ret;
 }
 
@@ -138,34 +144,26 @@ CharCollisionBall Character::checkCollision(const SDL_FRect& b){
 
 
 
-struct Vec2 {
-    float x = 0.0f;
-    float y = 0.0f;
-    Vec2() = default;
-    Vec2(float _x, float _y): x(_x), y(_y) {}
-    Vec2 operator+(const Vec2& o) const { return {x+o.x, y+o.y}; }
-    Vec2 operator-(const Vec2& o) const { return {x-o.x, y-o.y}; }
-    Vec2 operator*(float s) const { return {x*s, y*s}; }
-    Vec2& operator+=(const Vec2& o){ x+=o.x; y+=o.y; return *this;}
-    Vec2& operator*=(float s){ x*=s; y*=s; return *this;}
-    Vec2 normalize() const {
-        double mag = std::sqrt(x * x + y * y);
-        return mag > 0 ? Vec2(x / mag, y / mag) : *this;
-    }
-    double dodaibinh() const {return x*x + y*y;}
-    double dot(const Vec2& v) const { return x * v.x + y * v.y ; } // tích vô hướng
-};
 
 
 
-MotionEquation::MotionEquation(float alpha, float v0,float x0,float y0){
+
+MotionEquation::MotionEquation(float alpha, float v0,float x0,float y0, Vec2 a){
     this->v0 = v0;
     this->x0 = x0;
     this->y0 = y0;
     this->alpha = alpha;
-    this->a = -9.8f / (2 * this->v0 * this->v0 * cos(this->alpha)*cos(this->alpha));
-    this->b = tan(this->alpha);
-    this->c = 0.0f;
+    if(a == Vec2(0,0)){
+        this->a = -9.8f / (2 * this->v0 * this->v0 * cos(this->alpha)*cos(this->alpha));
+        this->b = tan(this->alpha);
+        this->c = 0.0f;
+    }
+    else{
+        this->a = 0;
+        this->b = a.y/a.x;
+        this->c = (-a.y*x0+a.x*y0)/a.x;
+    }
+    this->direction_vec = a;
 }
 
 MotionEquation::~MotionEquation(){
@@ -177,14 +175,22 @@ string MotionEquation::print(){
 
 tuple<int,int> MotionEquation::position(float dt){
     float x,y;
-    if(this->alpha == 0){
-        x = (this->v0)* this->idx *dt;
-        y = 0;
+    if(this->direction_vec == Vec2(0,0)){
+        if(this->alpha == 0){
+            x = (this->v0)* this->idx *dt;
+            y = 0;
+        }
+        else{
+            x = (this->v0 * cos(this->alpha))* this->idx *dt;
+            y = -(this->a * x*x + this->b * x + this->c);   
+        }
     }
     else{
-        x = (this->v0 * cos(this->alpha))* this->idx *dt;
-        y = -(this->a * x*x + this->b * x + this->c);   
+        float i = (this->alpha < M_PI/2)?1:-1;
+        x = i*(this->v0)* this->idx *dt;
+        y = (this->a * x*x + this->b * x + this->c);
     }
+    
     if (this->idx == 1){
         this->x0 = this->x0 - x;
         this->y0 = this->y0 - y;
@@ -194,10 +200,16 @@ tuple<int,int> MotionEquation::position(float dt){
 }
 Vec2 MotionEquation::direction_vector(float x0){
     // he so goc tai x0
-    float k = 2* this->a * x0 + this->b;
-    return Vec2(1, k);
+    if(this->direction_vec == Vec2(0,0)){
+        float k = 2* this->a * x0 + this->b;
+        return Vec2(1, k);
+    }
+    return this->direction_vec;
 }
 
+Vec2 direction_vector_A_to_B(Vec2 A, Vec2 B){
+    return B-A;
+}
 
 
 
@@ -213,7 +225,9 @@ Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position){
     this->surface = loadTexture("assets/ballRoll.png", gRenderer);
     this->srcRect = {0, 5, 15, 15};
     this->dstRect = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
-    this->motition = new MotionEquation(1*M_PI/12, 100, get<0>(position), get<1>(position));
+    this->motition = new MotionEquation(1*M_PI/24, 100, get<0>(position), get<1>(position));
+    // Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,300));
+    // this->motition = new MotionEquation(M_PI/4,200,get<0>(position), get<1>(position),a);
     // cout<< this->motition->print()<<endl;
 }
 Ball:: ~Ball(){
@@ -281,7 +295,13 @@ void Ball::checkCollision(Character* character){
     CharCollisionBall ele = character->checkCollision(this->dstRect);
     if(ele.is_collision){
         delete this->motition;
-        motition = new MotionEquation(ele.alpha, ele.v0, get<0>(this->position), get<1>(this->position));
+        if(ele.action == PlayerAction::Pass)
+            this->motition = new MotionEquation(ele.alpha, ele.v0, get<0>(this->position), get<1>(this->position));
+        else{
+            Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,400));
+            this->motition = new MotionEquation(ele.alpha, ele.v0,get<0>(position), get<1>(position),a);
+        }
+        // cout<< this->motition->print()<<endl;
     }
 }
 

@@ -26,7 +26,26 @@ struct ActionData{
 }; 
 // maxframe, url_asset
 
-struct Vec2;
+struct Vec2 {
+    float x = 0.0f;
+    float y = 0.0f;
+    Vec2() = default;
+    Vec2(float _x, float _y): x(_x), y(_y) {}
+    Vec2 operator+(const Vec2& o) const { return {x+o.x, y+o.y}; }
+    Vec2 operator-(const Vec2& o) const { return {x-o.x, y-o.y}; }
+    Vec2 operator*(float s) const { return {x*s, y*s}; }
+    Vec2& operator+=(const Vec2& o){ x+=o.x; y+=o.y; return *this;}
+    Vec2& operator*=(float s){ x*=s; y*=s; return *this;}
+    Vec2 normalize() const {
+        double mag = std::sqrt(x * x + y * y);
+        return mag > 0 ? Vec2(x / mag, y / mag) : *this;
+    }
+    bool operator==(const Vec2& other) const {
+        return x == other.x && y == other.y;
+    }
+    double dodaibinh() const {return x*x + y*y;}
+    double dot(const Vec2& v) const { return x * v.x + y * v.y ; } // tích vô hướng
+};
 
 struct KeyMap {
     SDL_Scancode up;
@@ -44,6 +63,8 @@ struct CharCollisionBall{
     bool is_collision;
     float v0;
     float alpha;
+    PlayerAction action;
+
 };
 
 // Map từ enum -> dữ liệu
@@ -85,14 +106,16 @@ private:
     float v0,x0,y0;    // vận tốc ban đầu, tọa độ ban đầu
     float a,b,c;     // ax2 + bx + c
     int idx = 1;
+    Vec2 direction_vec;
 public:
-    MotionEquation(float alpha, float v0,float x0 =0,float y0=0);
+    MotionEquation(float alpha, float v0,float x0 =0,float y0=0, Vec2 a=Vec2(0,0));
     ~MotionEquation();
     tuple<int,int> position(float dt);
     string print();
     Vec2 direction_vector(float x0);
     float getV0() {return this->v0;}
     float getAlpha() {return this->alpha;}
+
 };
 class Ball
 {
@@ -100,7 +123,6 @@ private:
     /* data */
     int current_frame;
     int max_frame;
-    int speed = 0.5;
     tuple<int, int> position;
     SDL_Texture* surface;
     SDL_FRect srcRect;
@@ -116,6 +138,6 @@ public:
     void update_position();
     void render();
     void collide(string str);
-    bool Isdead(){ return this->isdead == 5;}
+    bool Isdead(){ return this->isdead == 100;}
     void checkCollision(Character* character);
 };

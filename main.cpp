@@ -128,7 +128,7 @@ int main( int argc, char* args[] )
 			vector<Character*> characters;
 			characters.push_back( new Character(gRenderer, make_tuple(50,400), make_tuple(0,410)));
 			characters.push_back( new Character(gRenderer, make_tuple(950,400), make_tuple(540,950), "Char3"));
-			Ball* ball = new Ball(gRenderer, make_tuple(70,400));
+			Ball* ball = new Ball(gRenderer, make_tuple(70,300));    //70,300
 			while( quit == false ){ 
 				Uint64 frameStart = SDL_GetTicks();
 				while( SDL_PollEvent( &e ) ){ 
