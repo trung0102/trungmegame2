@@ -1,37 +1,55 @@
 #include "include/bot.h"
 
 const int SAN_BALL = 455;
+KeyMap LeftKeys = { SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D };
+KeyMap RightKeys = { SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT };
 
 unordered_map<PlayerAction, ActionData> actionData = {
-    { PlayerAction::Idle,           {12, loadSurface("assets/playerIdle.png")} },
-    { PlayerAction::MoveForward,    {12, loadSurface("assets/playerRun.png")} },
-    { PlayerAction::MoveBackward,   {12, loadSurface("assets/playerRun.png")} },
-    { PlayerAction::Spike,          {13, loadSurface("assets/playerSmash.png")} },
-    { PlayerAction::Block,          {13, loadSurface("assets/playerBlock.png")} },
-    { PlayerAction::Dive,           {15, loadSurface("assets/playerSlide.png")} },
-    { PlayerAction::Pass,           {11, loadSurface("assets/playerReception.png")} },
+    { PlayerAction::Idle,           {12, "assets/playerIdle.png"} },
+    { PlayerAction::MoveForward,    {12, "assets/playerRun.png"} },
+    { PlayerAction::MoveBackward,   {12, "assets/playerRun.png"} },
+    { PlayerAction::Spike,          {13, "assets/playerSmash.png"} },
+    { PlayerAction::Block,          {13, "assets/playerBlock.png"} },
+    { PlayerAction::Dive,           {15, "assets/playerSlide.png"} },
+    { PlayerAction::Pass,           {11, "assets/playerReception.png"} },
 };
 
-Character:: Character(tuple<int, int> position, tuple<int, int> patrol_range){
+Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range,string name){
     ActionData action = actionData[this->status];
     this->position = position;
     this->patrol_range = patrol_range;
     this->max_frame = action.maxframe;
-    this->surface = action.surface;
+    this->surface = loadTexture(action.surface, gRenderer);
     this->srcRect = {0, 0, 32, 48};
-    this->dstRect = {get<0>(position), get<1>(position), 32*2, 48*2};
+    this->dstRect = {float(get<0>(position)), float(get<1>(position)), 32*2, 48*2};
+    this->name = name;
+    this->gRenderer = gRenderer;
+    if(this->name == "Char1" || this->name == "Char2" ){
+        this->flipType = SDL_FLIP_NONE;
+        this->keymap = LeftKeys;
+    }
+    else{
+        this->flipType = SDL_FLIP_HORIZONTAL;
+        this->keymap = RightKeys;
+        this->speed = - this->speed;
+    }
 }
 Character:: ~Character(){
-    SDL_DestroySurface(this->surface);
+    SDL_DestroyTexture(this->surface);
 }
 void Character::update_position(){
     this->current_frame = (this->current_frame +1) % this->max_frame;
     this->srcRect.x = this->current_frame*32;
-    if(this->status == PlayerAction::MoveForward  && get<0>(this->position) < get<1>(this->patrol_range)) get<0>(this->position) += this->speed;
-    else if(this->status == PlayerAction::MoveBackward  && get<0>(this->position) > get<0>(this->patrol_range)) get<0>(this->position) -= (this->speed*3)/5;
+    int minX = get<0>(this->patrol_range);
+    int maxX = get<1>(this->patrol_range);
+    bool dk1 = (this->flipType == SDL_FLIP_HORIZONTAL)? get<0>(this->position) > minX : get<0>(this->position) < maxX;
+    bool dk2 = (this->flipType == SDL_FLIP_HORIZONTAL)? get<0>(this->position) < maxX : get<0>(this->position) > minX;
+    if(this->status == PlayerAction::MoveForward  && dk1) get<0>(this->position) += this->speed;
+    else if(this->status == PlayerAction::MoveBackward  && dk2) get<0>(this->position) -= (this->speed*3)/5;
     else if (this->status == PlayerAction::Spike ){
         int tmp = get<0>(this->position) + this->speed*2/5;
-        if(tmp < get<1>(this->patrol_range)){get<0>(this->position) = tmp;}
+        dk1 = (this->flipType == SDL_FLIP_HORIZONTAL)? tmp > minX : tmp < maxX;
+        if(dk1){get<0>(this->position) = tmp;}
         if(this->current_frame < 6){
             // cout<<"nhay"<<endl;
             get<1>(this->position) -= 15;
@@ -43,42 +61,45 @@ void Character::update_position(){
     }
     
 }
-void Character::render(SDL_Surface* screenSurface){
+void Character::render(){
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
-    SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
+    // SDL_RenderTexture(this->gRenderer, this->surface, &srcRect, &dstRect);
+    SDL_RenderTextureRotated(this->gRenderer, this->surface, &srcRect, &dstRect,0,NULL,this->flipType);
+    // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
 }
+
 void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
     PlayerAction curr_status = this->status;
     if (keyEvent.type == SDL_EVENT_KEY_UP){
         if(this->y0){ 
-                cout<<this->y0<<endl;
+                // cout<<this->y0<<endl;
                 get<1>(this->position) = this->y0;
                 this->y0=0;
             }
         this->status = PlayerAction::Idle;
     }
     else{
-        if(keyEvent.scancode == SDL_SCANCODE_W){
+        if(keyEvent.scancode == this->keymap.up){
             if(!this->y0){ 
                 this->y0 = get<1>(this->position);
-                cout<<this->y0<<endl;
+                // cout<<this->y0<<endl;
             }
             this->status = PlayerAction::Spike;
         }
         else{
             if(this->y0){ 
-                cout<<this->y0<<endl;
+                // cout<<this->y0<<endl;
                 get<1>(this->position) = this->y0;
                 this->y0=0;
             }
-            if(keyEvent.scancode == SDL_SCANCODE_A){
+            if(keyEvent.scancode == this->keymap.left){
                 this->status = PlayerAction::MoveBackward;
             }
-            else if(keyEvent.scancode == SDL_SCANCODE_D){
+            else if(keyEvent.scancode == this->keymap.right){
                 this->status = PlayerAction::MoveForward;
             }
-            else if(keyEvent.scancode == SDL_SCANCODE_S){
+            else if(keyEvent.scancode == this->keymap.down){
                 this->status = PlayerAction::Pass;
             }
             else{this->status = PlayerAction::Idle;}
@@ -88,10 +109,30 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
     if(curr_status != this->status) this->current_frame = 0;
     ActionData action = actionData[status];
     this->max_frame = action.maxframe;
-    this->surface = action.surface;
+    this->surface = loadTexture(action.surface, this->gRenderer);
 }
 
-
+CharCollisionBall Character::checkCollision(const SDL_FRect& b){
+    CharCollisionBall ret;
+    SDL_FRect a;
+    if(this->status == PlayerAction::Pass){
+        a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 35, this->dstRect.y + 45, 30,30}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 45, 30,30};
+    }
+    else{
+        a ={0,0,0,0};
+    }
+    if(a.x + a.w < b.x || a.x > b.x + b.w || a.y + a.h < b.y || a.y > b.y + b.h){ 
+        ret.is_collision = false;
+    }
+    else{
+        ret.is_collision = true;
+        ret.v0 = 80;
+        int value = rand() % (80 - 60 + 1) + 60;    // random tu 75 den 85
+        // cout<<value<<endl;
+        ret.alpha = (this->keymap == LeftKeys)?value*M_PI/180:(180-value)*M_PI/180;
+    }
+    return ret;
+}
 
 
 
@@ -164,24 +205,25 @@ Vec2 MotionEquation::direction_vector(float x0){
 
 
 
-Ball:: Ball(tuple<int, int> position){
+Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position){
     this->current_frame = 0;
     this->position = position;
     this->max_frame = 8;
-    this->surface = loadSurface("assets/ballRoll.png");
+    this->gRenderer = gRenderer;
+    this->surface = loadTexture("assets/ballRoll.png", gRenderer);
     this->srcRect = {0, 5, 15, 15};
-    this->dstRect = {get<0>(position), get<1>(position), 15*2, 15*2};
-    this->motition = new MotionEquation(18*M_PI/180, 70, get<0>(position), get<1>(position));
-    cout<< this->motition->print()<<endl;
+    this->dstRect = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
+    this->motition = new MotionEquation(1*M_PI/12, 100, get<0>(position), get<1>(position));
+    // cout<< this->motition->print()<<endl;
 }
 Ball:: ~Ball(){
-    SDL_DestroySurface(this->surface);
+    SDL_DestroyTexture(this->surface);
     delete this->motition;
 }
 void Ball::update_position(){
     this->current_frame = (this->current_frame +1) % (this->max_frame*2);
     tuple<int,int> pos_ball = this->motition->position(0.067);
-    cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
+    // cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
     this->position = pos_ball;
     if(get<1>(this->position) > SAN_BALL) {
         get<1>(this->position) = SAN_BALL;
@@ -190,7 +232,7 @@ void Ball::update_position(){
     // else if (487 <= get<0>(this->position) + 30 && 502 >= get<0>(this->position) + 30 &&
     //      364 <= get<1>(this->position) + 30 && 479 >= get<1>(this->position) + 30) {
     //     // cout << "hahahaha" << endl;
-    //     this->collide("Net");
+    //     this->collide("NET");
     // }
     this->srcRect.x = (int(this->current_frame/2)%this->max_frame)*15;
 }
@@ -198,42 +240,57 @@ void Ball::update_position(){
 void Ball::collide(string str){
     Vec2 Oy,Ox;
     float base = 0;
+    bool rotateLeft = (this->motition->getAlpha() > M_PI/2)? true:false;
     if(str == "SAN"){
         Oy = Vec2(0, -1);
-        Ox = Vec2(1, 0);
+        Ox = (rotateLeft)?Vec2(1, 0):Vec2(-1, 0);
     }
     else{
-        Oy = Vec2(-1, 0);
-        Ox = Vec2(0, -1);
+        Oy = (rotateLeft)?Vec2(-1, 0):Vec2(1, 0);
+        Ox = (rotateLeft)?Vec2(0, -1):Vec2(0, 1);
         base = 3*M_PI/2;
     }
     this->isdead++;
-    cout<<"hahahah"<<endl;
+    // cout<<"hahahah"<<endl;
     Vec2 a = this->motition->direction_vector(get<0>(this->position));
     Vec2 a2 = a - Oy.normalize() * (2.0f * a.dot(Oy.normalize()));
     float costheta = sqrt(a2.dot(Ox)*a2.dot(Ox)/a2.dodaibinh()*Ox.dodaibinh());
-    cout<<"cosx "<<costheta<<endl;
-    float theta = acos(costheta);
-    if(str == "Net") theta = base - theta;
-    if(theta > M_PI/2 && base == 0){theta = 0;}
-    cout<<"theta "<<theta<<endl;
+    // cout<<"cosx "<<costheta<<endl;
+    float theta = (rotateLeft)?M_PI - acos(costheta) : acos(costheta);
+    // cout<<"theta "<<theta<<endl;
+    if(str == "NET") theta = (rotateLeft)?base + M_PI - theta : base - theta;
+    if(base == 0){
+        if(theta > M_PI/2 && !rotateLeft) theta = 0;
+        else if(theta < M_PI/2 && rotateLeft) theta = M_PI;
+    }
+    // cout<<"theta "<<theta<<endl;
     double v0 = this->motition->getV0() * 0.75;
     delete this->motition;
     this->motition = new MotionEquation(theta, v0, get<0>(this->position), get<1>(this->position));
 }
 
-void Ball::render(SDL_Surface* screenSurface){
+void Ball::render(){
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
-    SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
+    SDL_RenderTexture(this->gRenderer, this->surface, &srcRect, &dstRect);
+    // SDL_RenderTextureRotated(this->gRenderer, this->surface, &srcRect, &dstRect,0,NULL,SDL_FLIP_HORIZONTAL);
+    // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
+}
+
+void Ball::checkCollision(Character* character){
+    CharCollisionBall ele = character->checkCollision(this->dstRect);
+    if(ele.is_collision){
+        delete this->motition;
+        motition = new MotionEquation(ele.alpha, ele.v0, get<0>(this->position), get<1>(this->position));
+    }
 }
 
 
 
-SDL_Surface* loadSurface( std::string path)
+SDL_Texture* loadTexture( std::string path, SDL_Renderer* gRenderer)
 {
-	//The final optimized image
-	SDL_Surface* optimizedSurface = NULL;
+	//The final texture
+	SDL_Texture* newTexture = NULL;
 
 	//Load image at specified path
 	SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
@@ -243,16 +300,16 @@ SDL_Surface* loadSurface( std::string path)
 	}
 	else
 	{
-		//Convert surface to screen format
-		optimizedSurface = SDL_ConvertSurface( loadedSurface, SDL_PIXELFORMAT_RGBA8888 );
-		if( optimizedSurface == NULL )
+		//Create texture from surface pixels
+		newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+		if( newTexture == NULL )
 		{
-			SDL_Log( "Unable to optimize image %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+			SDL_Log( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
 		}
 
 		//Get rid of old loaded surface
 		SDL_DestroySurface( loadedSurface );
 	}
 
-	return optimizedSurface;
+	return newTexture;
 }
