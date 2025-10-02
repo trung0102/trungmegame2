@@ -122,12 +122,13 @@ int main( int argc, char* args[] )
 		else
 		{	
 			//Hack to get window to stay up
-			const int targetFPS = 25; // FPS mục tiêu
+			const int targetFPS = 20; // FPS mục tiêu
     		const Uint64 frameTime = 1000 / targetFPS; // Thời gian mỗi khung hình (ms)
             SDL_Event e; bool quit = false;
 			vector<Character*> characters;
 			characters.push_back( new Character(gRenderer, make_tuple(50,400), make_tuple(0,410)));
-			Ball* ball = new Ball(make_tuple(0,400));
+			characters.push_back( new Character(gRenderer, make_tuple(950,400), make_tuple(540,950), "Char3"));
+			Ball* ball = new Ball(gRenderer, make_tuple(70,400));
 			while( quit == false ){ 
 				Uint64 frameStart = SDL_GetTicks();
 				while( SDL_PollEvent( &e ) ){ 
@@ -147,13 +148,13 @@ int main( int argc, char* args[] )
 				for (auto character : characters) {
 					character->update_position();
 					character->render();
-				// 	if(!ball->Isdead()){
-				// 		ball->checkCollision(character);
-				// 	}
-				// }
-				// if(!ball->Isdead()){
-				// 	ball->update_position();
-				// 	ball->render(gScreenSurface);
+					if(!ball->Isdead()){
+						ball->checkCollision(character);
+					}
+				}
+				if(!ball->Isdead()){
+					ball->update_position();
+					ball->render();
 				}
 				
 				//Update screen

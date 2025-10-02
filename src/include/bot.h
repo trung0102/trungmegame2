@@ -28,6 +28,18 @@ struct ActionData{
 
 struct Vec2;
 
+struct KeyMap {
+    SDL_Scancode up;
+    SDL_Scancode down;
+    SDL_Scancode left;
+    SDL_Scancode right;
+    bool operator==(const KeyMap& other) const {
+        return up == other.up &&
+               down == other.down &&
+               left == other.left &&
+               right == other.right;
+    }
+};
 struct CharCollisionBall{
     bool is_collision;
     float v0;
@@ -53,6 +65,8 @@ private:
     int y0 = 0;
     string name;
     SDL_Renderer* gRenderer;
+    SDL_FlipMode flipType;
+    KeyMap keymap;
 
 public:
     Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range, string name = "Char1");
@@ -78,6 +92,7 @@ public:
     string print();
     Vec2 direction_vector(float x0);
     float getV0() {return this->v0;}
+    float getAlpha() {return this->alpha;}
 };
 class Ball
 {
@@ -93,12 +108,13 @@ private:
     MotionEquation * motition = nullptr;
     int idex = 0;
     int isdead = 0;
+    SDL_Renderer* gRenderer;
     
 public:
-    Ball(tuple<int, int> position);
+    Ball(SDL_Renderer* gRenderer, tuple<int, int> position);
     ~Ball();
     void update_position();
-    void render(SDL_Texture* screenSurface);
+    void render();
     void collide(string str);
     bool Isdead(){ return this->isdead == 5;}
     void checkCollision(Character* character);
