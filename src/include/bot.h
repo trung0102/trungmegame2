@@ -5,6 +5,7 @@
 #include <tuple>
 #include <iostream>
 #include <cmath>
+#include <queue>
 using namespace std;
 
 extern SDL_Renderer* gRenderer;
@@ -131,6 +132,8 @@ private:
     int idex = 0;
     int isdead = 0;
     SDL_Renderer* gRenderer;
+    queue <tuple<int, int>> queue_pos;
+    SDL_Texture *duanh;
     
 public:
     Ball(SDL_Renderer* gRenderer, tuple<int, int> position);

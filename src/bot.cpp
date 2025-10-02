@@ -116,11 +116,11 @@ CharCollisionBall Character::checkCollision(const SDL_FRect& b){
     CharCollisionBall ret;
     SDL_FRect a;
     if(this->status == PlayerAction::Pass){
-        a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 35, this->dstRect.y + 45, 30,30}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 45, 30,30};
+        a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 45, this->dstRect.y + 65, 20,10}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 65, 20,10};
     }
     else if(this->status == PlayerAction::Spike){
         if(this->current_frame >5 && this->current_frame <8){
-            a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 20, this->dstRect.y + 20, 30,30}:SDL_FRect{this->dstRect.x+24, this->dstRect.y + 20, 30,30};
+            a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 40, this->dstRect.y + 20, 10,20}:SDL_FRect{this->dstRect.x+4, this->dstRect.y + 20, 10,20};
         }
     }
     else{
@@ -223,12 +223,17 @@ Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position){
     this->max_frame = 8;
     this->gRenderer = gRenderer;
     this->surface = loadTexture("assets/ballRoll.png", gRenderer);
+    this->duanh = loadTexture("assets/duanh.png", gRenderer);
     this->srcRect = {0, 5, 15, 15};
     this->dstRect = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
     this->motition = new MotionEquation(1*M_PI/24, 100, get<0>(position), get<1>(position));
     // Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,300));
     // this->motition = new MotionEquation(M_PI/4,200,get<0>(position), get<1>(position),a);
     // cout<< this->motition->print()<<endl;
+    for(int i=0;i<7;++i){
+        this->queue_pos.push(make_tuple(-50,0));
+    }
+    this->queue_pos.push(this->position);
 }
 Ball:: ~Ball(){
     SDL_DestroyTexture(this->surface);
@@ -239,6 +244,8 @@ void Ball::update_position(){
     tuple<int,int> pos_ball = this->motition->position(0.067);
     // cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
     this->position = pos_ball;
+    this->queue_pos.pop();
+    this->queue_pos.push(this->position);
     if(get<1>(this->position) > SAN_BALL) {
         get<1>(this->position) = SAN_BALL;
         this->collide("SAN");
@@ -286,6 +293,17 @@ void Ball::collide(string str){
 void Ball::render(){
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
+    SDL_FRect srcR = {105, 5, 15, 15};
+    SDL_FRect dstR = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
+    queue <tuple<int, int>> tmp = this->queue_pos;
+    for (int i=0;!tmp.empty(); i = (i+1)%16) {
+        tuple<int, int> posi = tmp.front();
+        srcR.x = 105 - (int(i/2)%8)*15;
+        dstR = {float(get<0>(posi)), float(get<1>(posi)), 15*2, 15*2};
+        tmp.pop();
+        SDL_RenderTexture(this->gRenderer, this->duanh, &srcR, &dstR);
+    }
+
     SDL_RenderTexture(this->gRenderer, this->surface, &srcRect, &dstRect);
     // SDL_RenderTextureRotated(this->gRenderer, this->surface, &srcRect, &dstRect,0,NULL,SDL_FLIP_HORIZONTAL);
     // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
