@@ -247,17 +247,17 @@ bool Ball::update_position(){
     this->position = pos_ball;
     this->queue_pos.pop();
     this->queue_pos.push(this->position);
+    this->srcRect.x = (int(this->current_frame/2)%this->max_frame)*15;
     if(get<1>(this->position) > SAN_BALL) {
         get<1>(this->position) = SAN_BALL;
         this->collide("SAN");
-        return true;
     }
     // else if (487 <= get<0>(this->position) + 30 && 502 >= get<0>(this->position) + 30 &&
     //      364 <= get<1>(this->position) + 30 && 479 >= get<1>(this->position) + 30) {
     //     // cout << "hahahaha" << endl;
     //     this->collide("NET");
     // }
-    this->srcRect.x = (int(this->current_frame/2)%this->max_frame)*15;
+    return !this->can_touch;
 }
 
 void Ball::collide(string str){
@@ -273,11 +273,13 @@ void Ball::collide(string str){
         Ox = (rotateLeft)?Vec2(0, -1):Vec2(0, 1);
         base = 3*M_PI/2;
     }
-    if(rotateLeft && !this->isdead){
+    if(rotateLeft && this->can_touch){
         RIGHT++;
+        this->can_touch = false;
     }
-    else if(!rotateLeft && !this->isdead){
+    else if(!rotateLeft && this->can_touch){
         LEFT++;
+        this->can_touch = false;
     }
     this->isdead++;
     // cout<<"hahahah"<<endl;
@@ -318,6 +320,7 @@ void Ball::render(){
 }
 
 void Ball::checkCollision(Character* character){
+    if(!this->can_touch) return;
     CharCollisionBall ele = character->checkCollision(this->dstRect);
     if(ele.is_collision){
         delete this->motition;

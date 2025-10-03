@@ -136,6 +136,7 @@ private:
     SDL_Renderer* gRenderer;
     queue <tuple<int, int>> queue_pos;
     SDL_Texture *duanh;
+    bool can_touch = true;
     
 public:
     Ball(SDL_Renderer* gRenderer, tuple<int, int> position,string a="LEFT");

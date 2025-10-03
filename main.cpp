@@ -19,11 +19,22 @@ bool init();
 //Loads media
 bool loadMedia();
 
+enum GameState {START, RUN, PAUSE, SETUP};
+string gameStateToString(GameState state) {
+    switch (state) {
+        case START: return "START";
+        case RUN:   return "RUN";
+        case PAUSE: return "PAUSE";
+        case SETUP: return "SETUP";
+        default:    return "UNKNOWN";
+    }
+}
+Uint32 countdown_start_time = 0;
 //Frees media and shuts down SDL
 void close();
-void drawNumber(int x, int y, int number, int size);
 //The window we'll be rendering to
 SDL_Window* gWindow = NULL;
+GameState game = START;
 
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
@@ -107,6 +118,7 @@ void drawTS(int size = 0){
 	SDL_RenderTexture(gRenderer, TSL, new SDL_FRect{0,0,300,300}, new SDL_FRect{407,37,100,100});
 	SDL_RenderTexture(gRenderer, TSR, new SDL_FRect{0,0,300,300}, new SDL_FRect{493,37,100,100});
 }
+void drawCountdown(int countdown);
 void drawMap(){
 	SDL_FRect srcRect = {0, 0, 400, 430};
 	SDL_FRect dstRect = {0, 0, 1000, 750};
@@ -115,7 +127,6 @@ void drawMap(){
 	dstRect = {450, 60, 100, 690};
 	SDL_RenderTexture(gRenderer, VNetTexture, &srcRect, &dstRect);
 	netframe = ((netframe +1))%18;
-	// drawTS();
 }
 
 void drawCountdown(int countdown) {
@@ -132,10 +143,15 @@ void drawCountdown(int countdown) {
 		SDL_RenderTexture(gRenderer, assets[countdown], new SDL_FRect{0,0,300,300}, new SDL_FRect{centerX,centerY,300,300});
 	}
 }
-void drawNumber(int x, int y, int num, int size) {
-	
+void drawPause(Uint32 start){
+	Uint32 now = SDL_GetTicks();
+    int elapsed = (now - start) / 1000; 
+    int remaining = 3 - elapsed;    
+	if(remaining > 0) drawCountdown(remaining);  
+	else{
+		game = SETUP;
+	}       
 }
-
 void close()
 {
 	//Free loaded image
@@ -177,43 +193,64 @@ int main( int argc, char* args[] )
 			vector<Character*> characters;
 			characters.push_back( new Character(gRenderer, make_tuple(50,400), make_tuple(0,410)));
 			characters.push_back( new Character(gRenderer, make_tuple(950,400), make_tuple(540,950), "Char3"));
-			Ball* ball = new Ball(gRenderer, make_tuple(70,300));    //70,300
+			Ball* ball = nullptr;    //70,300
 			while( quit == false ){ 
+				cout<<gameStateToString(game)<<endl;
 				Uint64 frameStart = SDL_GetTicks();
 				while( SDL_PollEvent( &e ) ){ 
 					if( e.type == SDL_EVENT_QUIT ) quit = true; 
-					else if (e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP){
+					else if ((e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP) && game == RUN){
 						for (auto character : characters) {
         					character->getKeyboardEvent(e.key);
     					}
 					}
-					else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
-						std::cout << "Mouse button pressed at: ("
-                              << e.button.x << ", " << e.button.y << ")\n";
+					else if (game == START && e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
+						float x = e.button.x, y=e.button.y;
+						if(x<650 && x>350 && y<425 && y>325){
+							game = SETUP;
+						}
 					}
 
-				}
-				if(!ball){
-					ball = new Ball(gRenderer, make_tuple(70,300));
 				}
 				drawMap();
-				for (auto character : characters) {
-					character->update_position();
-					character->render();
-					if(!ball->Isdead()){
-						ball->checkCollision(character);
+				if(game == START || game == SETUP){
+					drawCountdown(-1);
+					if(game == START) SDL_RenderTexture(gRenderer, TS, new SDL_FRect{0,0,500,500}, new SDL_FRect{350,325,300,100});
+					else{
+						game = RUN;
+						if(ball){
+							delete ball;
+							ball = nullptr;
+						}
+						ball = new Ball(gRenderer, make_tuple(70,300));
+					} 
+				}
+				if(game != START){
+					for (auto character : characters) {
+						character->update_position();
+						character->render();
+						if(game == RUN && !ball->Isdead()){
+							ball->checkCollision(character); // nguoi danh dc bong
+						}
 					}
+					if(game != SETUP){          // RUN, PAUSE
+						if(!ball->Isdead()){
+							if(ball->update_position() && game != PAUSE){
+								countdown_start_time = SDL_GetTicks();
+								game = PAUSE;
+							} 
+							ball->render();
+						}
+						TSL = assets[LEFT];
+						TSR = assets[RIGHT+10];
+						if(game != RUN) drawPause(countdown_start_time);
+						//Update screen
+						drawTS();
+					}
+					
 				}
-				if(!ball->Isdead()){
-					ball->update_position();
-					ball->render();
-				}
-				TSL = assets[LEFT];
-				TSR = assets[RIGHT+10];
 				
-				//Update screen
-				drawTS();
-
+						
 				// drawCountdown(3);
 				SDL_RenderPresent( gRenderer );
 
