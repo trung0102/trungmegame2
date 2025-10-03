@@ -1,5 +1,5 @@
 #include "include/bot.h"
-
+int LEFT = 0, RIGHT = 0;
 const int SAN_BALL = 455;
 KeyMap LeftKeys = { SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D };
 KeyMap RightKeys = { SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT };
@@ -217,7 +217,7 @@ Vec2 direction_vector_A_to_B(Vec2 A, Vec2 B){
 
 
 
-Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position){
+Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position, string a){
     this->current_frame = 0;
     this->position = position;
     this->max_frame = 8;
@@ -226,7 +226,8 @@ Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position){
     this->duanh = loadTexture("assets/duanh.png", gRenderer);
     this->srcRect = {0, 5, 15, 15};
     this->dstRect = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
-    this->motition = new MotionEquation(1*M_PI/24, 100, get<0>(position), get<1>(position));
+    float theta = (a=="LEFT")?1*M_PI/24:M_PI - 1*M_PI/24;
+    this->motition = new MotionEquation(theta, 100, get<0>(position), get<1>(position));
     // Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,300));
     // this->motition = new MotionEquation(M_PI/4,200,get<0>(position), get<1>(position),a);
     // cout<< this->motition->print()<<endl;
@@ -239,7 +240,7 @@ Ball:: ~Ball(){
     SDL_DestroyTexture(this->surface);
     delete this->motition;
 }
-void Ball::update_position(){
+bool Ball::update_position(){
     this->current_frame = (this->current_frame +1) % (this->max_frame*2);
     tuple<int,int> pos_ball = this->motition->position(0.067);
     // cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
@@ -249,6 +250,7 @@ void Ball::update_position(){
     if(get<1>(this->position) > SAN_BALL) {
         get<1>(this->position) = SAN_BALL;
         this->collide("SAN");
+        return true;
     }
     // else if (487 <= get<0>(this->position) + 30 && 502 >= get<0>(this->position) + 30 &&
     //      364 <= get<1>(this->position) + 30 && 479 >= get<1>(this->position) + 30) {
@@ -261,7 +263,7 @@ void Ball::update_position(){
 void Ball::collide(string str){
     Vec2 Oy,Ox;
     float base = 0;
-    bool rotateLeft = (this->motition->getAlpha() > M_PI/2)? true:false;
+    bool rotateLeft = (this->motition->getAlpha() > M_PI/2 && this->motition->getAlpha() < M_PI)? true:false;
     if(str == "SAN"){
         Oy = Vec2(0, -1);
         Ox = (rotateLeft)?Vec2(1, 0):Vec2(-1, 0);
@@ -270,6 +272,12 @@ void Ball::collide(string str){
         Oy = (rotateLeft)?Vec2(-1, 0):Vec2(1, 0);
         Ox = (rotateLeft)?Vec2(0, -1):Vec2(0, 1);
         base = 3*M_PI/2;
+    }
+    if(rotateLeft && !this->isdead){
+        RIGHT++;
+    }
+    else if(!rotateLeft && !this->isdead){
+        LEFT++;
     }
     this->isdead++;
     // cout<<"hahahah"<<endl;

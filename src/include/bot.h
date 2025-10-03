@@ -27,6 +27,8 @@ struct ActionData{
 }; 
 // maxframe, url_asset
 
+extern int LEFT, RIGHT;
+
 struct Vec2 {
     float x = 0.0f;
     float y = 0.0f;
@@ -136,11 +138,11 @@ private:
     SDL_Texture *duanh;
     
 public:
-    Ball(SDL_Renderer* gRenderer, tuple<int, int> position);
+    Ball(SDL_Renderer* gRenderer, tuple<int, int> position,string a="LEFT");
     ~Ball();
-    void update_position();
+    bool update_position();
     void render();
     void collide(string str);
-    bool Isdead(){ return this->isdead == 100;}
+    bool Isdead(){ return this->isdead == 5;}
     void checkCollision(Character* character);
 };

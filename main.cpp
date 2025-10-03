@@ -12,7 +12,7 @@ and may not be redistributed without written permission.*/
 //Screen dimension constants
 const int SCREEN_WIDTH = 1000;
 const int SCREEN_HEIGHT = 750;
-
+// enum State = {START, PAUSE, RUN};
 //Starts up SDL and creates window
 bool init();
 
@@ -21,7 +21,7 @@ bool loadMedia();
 
 //Frees media and shuts down SDL
 void close();
-
+void drawNumber(int x, int y, int number, int size);
 //The window we'll be rendering to
 SDL_Window* gWindow = NULL;
 
@@ -31,8 +31,9 @@ SDL_Renderer* gRenderer = NULL;
 //Current displayed PNG image
 SDL_Texture* VCourtTexture = NULL;
 SDL_Texture* VNetTexture = NULL;
+SDL_Texture* TSL,*TSR,*TS = NULL;
 int netframe = 0;
-
+unordered_map<int, SDL_Texture*> assets;
 bool init()
 {
 	//Initialization flag
@@ -75,8 +76,36 @@ bool loadMedia()
 		SDL_Log( "Failed to load PNG image!\n" );
 		success = false;
 	}
+	assets = {
+    { 0,	loadTexture("assets/orange_0.png", gRenderer ) },
+    { 1,    loadTexture("assets/orange_1.png", gRenderer ) },
+    { 2,   	loadTexture("assets/orange_2.png", gRenderer ) },
+    { 3,    loadTexture("assets/orange_3.png", gRenderer ) },
+    { 4,    loadTexture("assets/orange_4.png", gRenderer ) },
+    { 5,    loadTexture("assets/orange_5.png", gRenderer ) },
+    { 6,    loadTexture("assets/orange_6.png", gRenderer ) },
+	{ 7,	loadTexture("assets/orange_7.png", gRenderer ) },
+    { 8,    loadTexture("assets/orange_8.png", gRenderer ) },
+    { 9,   	loadTexture("assets/orange_9.png", gRenderer ) },
+    
+	{ 10,	loadTexture("assets/green_0.png", gRenderer ) },
+    { 11,   loadTexture("assets/green_1.png", gRenderer ) },
+    { 12,   loadTexture("assets/green_2.png", gRenderer ) },
+    { 13,   loadTexture("assets/green_3.png", gRenderer ) },
+    { 14,   loadTexture("assets/green_4.png", gRenderer ) },
+    { 15,   loadTexture("assets/green_5.png", gRenderer ) },
+    { 16,   loadTexture("assets/green_6.png", gRenderer ) },
+	{ 17,	loadTexture("assets/green_7.png", gRenderer ) },
+    { 18,   loadTexture("assets/green_8.png", gRenderer ) },
+    { 19,   loadTexture("assets/green_9.png", gRenderer ) }};
+	TS = loadTexture("assets/bangtiso.png", gRenderer );
 
 	return success;
+}
+void drawTS(int size = 0){
+	SDL_RenderTexture(gRenderer, TS, new SDL_FRect{0,0,500,500}, new SDL_FRect{400,-30,200,200});
+	SDL_RenderTexture(gRenderer, TSL, new SDL_FRect{0,0,300,300}, new SDL_FRect{407,37,100,100});
+	SDL_RenderTexture(gRenderer, TSR, new SDL_FRect{0,0,300,300}, new SDL_FRect{493,37,100,100});
 }
 void drawMap(){
 	SDL_FRect srcRect = {0, 0, 400, 430};
@@ -86,7 +115,27 @@ void drawMap(){
 	dstRect = {450, 60, 100, 690};
 	SDL_RenderTexture(gRenderer, VNetTexture, &srcRect, &dstRect);
 	netframe = ((netframe +1))%18;
+	// drawTS();
 }
+
+void drawCountdown(int countdown) {
+	// Vẽ nền mờ
+	SDL_SetRenderDrawBlendMode(gRenderer, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 150);
+	SDL_FRect overlay = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+	SDL_RenderFillRect(gRenderer, &overlay);
+
+	// Vẽ số đếm ngược lớn
+	if (countdown > 0) {
+		float centerX = SCREEN_WIDTH / 2 - 150;
+		float centerY = SCREEN_HEIGHT / 2 - 150;
+		SDL_RenderTexture(gRenderer, assets[countdown], new SDL_FRect{0,0,300,300}, new SDL_FRect{centerX,centerY,300,300});
+	}
+}
+void drawNumber(int x, int y, int num, int size) {
+	
+}
+
 void close()
 {
 	//Free loaded image
@@ -144,6 +193,9 @@ int main( int argc, char* args[] )
 					}
 
 				}
+				if(!ball){
+					ball = new Ball(gRenderer, make_tuple(70,300));
+				}
 				drawMap();
 				for (auto character : characters) {
 					character->update_position();
@@ -156,8 +208,13 @@ int main( int argc, char* args[] )
 					ball->update_position();
 					ball->render();
 				}
+				TSL = assets[LEFT];
+				TSR = assets[RIGHT+10];
 				
 				//Update screen
+				drawTS();
+
+				// drawCountdown(3);
 				SDL_RenderPresent( gRenderer );
 
 				Uint64 frameEnd = SDL_GetTicks(); // Thời gian kết thúc khung hình
