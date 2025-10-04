@@ -35,7 +35,7 @@ void close();
 //The window we'll be rendering to
 SDL_Window* gWindow = NULL;
 GameState game = START;
-
+SDL_Scancode lastkey;
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
 
@@ -191,18 +191,22 @@ int main( int argc, char* args[] )
     		const Uint64 frameTime = 1000 / targetFPS; // Thời gian mỗi khung hình (ms)
             SDL_Event e; bool quit = false;
 			vector<Character*> characters;
-			characters.push_back( new Character(gRenderer, make_tuple(50,400), make_tuple(0,410)));
-			characters.push_back( new Character(gRenderer, make_tuple(950,400), make_tuple(540,950), "Char3"));
+			characters.push_back( new Character(gRenderer, make_tuple(250,400), make_tuple(0,410)));
+			characters.push_back( new Character(gRenderer, make_tuple(750,400), make_tuple(540,950), "Char3"));
+			characters.push_back( new Character(gRenderer, make_tuple(50,400), make_tuple(0,410), "Char2", false));
+			characters.push_back( new Character(gRenderer, make_tuple(950,400), make_tuple(540,950), "Char4", false));
 			Ball* ball = nullptr;    //70,300
 			while( quit == false ){ 
-				cout<<gameStateToString(game)<<endl;
+				// cout<<gameStateToString(game)<<endl;
 				Uint64 frameStart = SDL_GetTicks();
 				while( SDL_PollEvent( &e ) ){ 
 					if( e.type == SDL_EVENT_QUIT ) quit = true; 
 					else if ((e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP) && game == RUN){
 						for (auto character : characters) {
+							if(e.key.scancode == SDL_SCANCODE_R && lastkey != SDL_SCANCODE_R) {cout<<"RRRRRRRRRRRRRRRRR"<<endl;character->changeControl();}
         					character->getKeyboardEvent(e.key);
     					}
+						lastkey = e.key.scancode;
 					}
 					else if (game == START && e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
 						float x = e.button.x, y=e.button.y;
@@ -235,10 +239,10 @@ int main( int argc, char* args[] )
 					}
 					if(game != SETUP){          // RUN, PAUSE
 						if(!ball->Isdead()){
-							if(ball->update_position() && game != PAUSE){
-								countdown_start_time = SDL_GetTicks();
-								game = PAUSE;
-							} 
+							// if(ball->update_position() && game != PAUSE){
+							// 	countdown_start_time = SDL_GetTicks();
+							// 	game = PAUSE;
+							// } 
 							ball->render();
 						}
 						TSL = assets[LEFT];

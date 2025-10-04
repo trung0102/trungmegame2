@@ -91,14 +91,16 @@ private:
     SDL_Renderer* gRenderer;
     SDL_FlipMode flipType;
     KeyMap keymap;
+    bool is_control;
 
 public:
-    Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range, string name = "Char1");
+    Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range, string name = "Char1", bool is_control=true);
     ~Character();
     void render();
     void update_position();
     void getKeyboardEvent(SDL_KeyboardEvent keyEvent);
     CharCollisionBall checkCollision(const SDL_FRect& b);
+    void changeControl(){this->is_control = !this->is_control;}
 };
 
 // inline float deg2rad(float deg){ return deg * 3.14159265358979323846f / 180.0f; }

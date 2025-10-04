@@ -14,7 +14,7 @@ unordered_map<PlayerAction, ActionData> actionData = {
     { PlayerAction::Pass,           {11, "assets/playerReception.png"} },
 };
 
-Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range,string name){
+Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range,string name, bool is_control){
     ActionData action = actionData[this->status];
     this->position = position;
     this->patrol_range = patrol_range;
@@ -24,6 +24,7 @@ Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<i
     this->dstRect = {float(get<0>(position)), float(get<1>(position)), 32*2, 48*2};
     this->name = name;
     this->gRenderer = gRenderer;
+    this->is_control = is_control;
     if(this->name == "Char1" || this->name == "Char2" ){
         this->flipType = SDL_FLIP_NONE;
         this->keymap = LeftKeys;
@@ -79,7 +80,7 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
             }
         this->status = PlayerAction::Idle;
     }
-    else{
+    else if(this->is_control){
         if(keyEvent.scancode == this->keymap.up){
             if(!this->y0){ 
                 this->y0 = get<1>(this->position);
@@ -102,7 +103,9 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
             else if(keyEvent.scancode == this->keymap.down){
                 this->status = PlayerAction::Pass;
             }
-            else{this->status = PlayerAction::Idle;}
+            else{
+                this->status = PlayerAction::Idle;
+            }
         }
     }
     
@@ -242,7 +245,7 @@ Ball:: ~Ball(){
 }
 bool Ball::update_position(){
     this->current_frame = (this->current_frame +1) % (this->max_frame*2);
-    tuple<int,int> pos_ball = this->motition->position(0.067);
+    tuple<int,int> pos_ball = this->motition->position(0.067*1.5);
     // cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
     this->position = pos_ball;
     this->queue_pos.pop();
