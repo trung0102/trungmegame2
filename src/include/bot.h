@@ -40,14 +40,14 @@ struct Vec2 {
     Vec2& operator+=(const Vec2& o){ x+=o.x; y+=o.y; return *this;}
     Vec2& operator*=(float s){ x*=s; y*=s; return *this;}
     Vec2 normalize() const {
-        double mag = std::sqrt(x * x + y * y);
+        float mag = std::sqrt(x * x + y * y);
         return mag > 0 ? Vec2(x / mag, y / mag) : *this;
     }
     bool operator==(const Vec2& other) const {
         return x == other.x && y == other.y;
     }
-    double dodaibinh() const {return x*x + y*y;}
-    double dot(const Vec2& v) const { return x * v.x + y * v.y ; } // tích vô hướng
+    float dodaibinh() const {return x*x + y*y;}
+    float dot(const Vec2& v) const { return x * v.x + y * v.y ; } // tích vô hướng
 };
 
 struct KeyMap {
@@ -120,7 +120,7 @@ public:
     Vec2 direction_vector(float x0);
     float getV0() {return this->v0;}
     float getAlpha() {return this->alpha;}
-
+    float SolveEquation(float y = 585);
 };
 class Ball
 {
@@ -138,7 +138,10 @@ private:
     SDL_Renderer* gRenderer;
     queue <tuple<int, int>> queue_pos;
     SDL_Texture *duanh;
+    SDL_Texture *dubao;
     bool can_touch = true;
+    float y_dubao;
+    float x_dubao;
     
 public:
     Ball(SDL_Renderer* gRenderer, tuple<int, int> position,string a="LEFT");

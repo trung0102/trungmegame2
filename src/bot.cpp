@@ -1,6 +1,8 @@
 #include "include/bot.h"
+#include "include/AI.h"
+
 int LEFT = 0, RIGHT = 0;
-const int SAN_BALL = 455;
+const int SAN_BALL = 555;
 KeyMap LeftKeys = { SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D };
 KeyMap RightKeys = { SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT };
 
@@ -214,6 +216,26 @@ Vec2 direction_vector_A_to_B(Vec2 A, Vec2 B){
     return B-A;
 }
 
+float MotionEquation::SolveEquation(float y){
+    y = y - this->y0;
+    cout<< y<<endl;
+    if(this->a == 0){
+        return this->x0 + -(this->c - y)/this->b;
+    }
+    else{
+        float delta = this->b*this->b - 4*this->a*(this->c + y);
+        float tu_so;
+        float mau_so = 2*this->a;
+        if(this->alpha < M_PI/2){
+            tu_so = - this->b - sqrt(delta);
+            return this->x0 + tu_so/mau_so;
+        }
+        else{
+            tu_so = - this->b + sqrt(delta);
+            return this->x0 + tu_so/mau_so;
+        }
+    }
+}
 
 
 
@@ -227,13 +249,16 @@ Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position, string a){
     this->gRenderer = gRenderer;
     this->surface = loadTexture("assets/ballRoll.png", gRenderer);
     this->duanh = loadTexture("assets/duanh.png", gRenderer);
+    this->dubao = loadTexture("assets/vtrondubao.png", gRenderer);
     this->srcRect = {0, 5, 15, 15};
     this->dstRect = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
     float theta = (a=="LEFT")?1*M_PI/24:M_PI - 1*M_PI/24;
     this->motition = new MotionEquation(theta, 100, get<0>(position), get<1>(position));
+    this->y_dubao = SAN_BALL+30 - 5.66*4;
+    this->x_dubao = this->motition->SolveEquation();
     // Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,300));
     // this->motition = new MotionEquation(M_PI/4,200,get<0>(position), get<1>(position),a);
-    // cout<< this->motition->print()<<endl;
+    cout<< this->motition->print()<<endl;
     for(int i=0;i<7;++i){
         this->queue_pos.push(make_tuple(-50,0));
     }
@@ -298,12 +323,14 @@ void Ball::collide(string str){
         else if(theta < M_PI/2 && rotateLeft) theta = M_PI;
     }
     // cout<<"theta "<<theta<<endl;
-    double v0 = this->motition->getV0() * 0.75;
+    float v0 = this->motition->getV0() * 0.75;
     delete this->motition;
     this->motition = new MotionEquation(theta, v0, get<0>(this->position), get<1>(this->position));
+    this->x_dubao = this->motition->SolveEquation();
 }
 
 void Ball::render(){
+    cout<<this->x_dubao<<"   "<<this->y_dubao<<endl;
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
     SDL_FRect srcR = {105, 5, 15, 15};
@@ -316,8 +343,8 @@ void Ball::render(){
         tmp.pop();
         SDL_RenderTexture(this->gRenderer, this->duanh, &srcR, &dstR);
     }
-
     SDL_RenderTexture(this->gRenderer, this->surface, &srcRect, &dstRect);
+    SDL_RenderTexture(this->gRenderer, this->dubao, new SDL_FRect{0,0,281,106}, new SDL_FRect{this->x_dubao,this->y_dubao,60,5.66*4});
     // SDL_RenderTextureRotated(this->gRenderer, this->surface, &srcRect, &dstRect,0,NULL,SDL_FLIP_HORIZONTAL);
     // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
 }
@@ -327,13 +354,16 @@ void Ball::checkCollision(Character* character){
     CharCollisionBall ele = character->checkCollision(this->dstRect);
     if(ele.is_collision){
         delete this->motition;
-        if(ele.action == PlayerAction::Pass)
+        if(ele.action == PlayerAction::Pass){
             this->motition = new MotionEquation(ele.alpha, ele.v0, get<0>(this->position), get<1>(this->position));
+            this->x_dubao = this->motition->SolveEquation();
+        }    
         else{
-            Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,400));
+            Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,500));
             this->motition = new MotionEquation(ele.alpha, ele.v0,get<0>(position), get<1>(position),a);
+            this->x_dubao = this->motition->SolveEquation();
         }
-        // cout<< this->motition->print()<<endl;
+        cout<< this->motition->print()<<endl;
     }
 }
 

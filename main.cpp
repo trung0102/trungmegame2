@@ -80,7 +80,7 @@ bool loadMedia()
 	bool success = true;
 	
 	//Load PNG surface
-	VCourtTexture = loadTexture( "assets/beachbkgIso.png", gRenderer );
+	VCourtTexture = loadTexture( "assets/beach.jpg", gRenderer );
 	VNetTexture = loadTexture( "assets/net0.png", gRenderer );
 	if( VCourtTexture == NULL )
 	{
@@ -120,11 +120,11 @@ void drawTS(int size = 0){
 }
 void drawCountdown(int countdown);
 void drawMap(){
-	SDL_FRect srcRect = {0, 0, 400, 430};
-	SDL_FRect dstRect = {0, 0, 1000, 750};
+	SDL_FRect srcRect = {175, 0, 2395, 2268};
+	SDL_FRect dstRect = {0, 0, 1200, 750};
 	SDL_RenderTexture(gRenderer, VCourtTexture, &srcRect, &dstRect);
 	srcRect = {((netframe/3)%6)*45.0f, 0, 45, 450};
-	dstRect = {450, 60, 100, 690};
+	dstRect = {450, 360, 170, 400};
 	SDL_RenderTexture(gRenderer, VNetTexture, &srcRect, &dstRect);
 	netframe = ((netframe +1))%18;
 }
@@ -191,10 +191,10 @@ int main( int argc, char* args[] )
     		const Uint64 frameTime = 1000 / targetFPS; // Thời gian mỗi khung hình (ms)
             SDL_Event e; bool quit = false;
 			vector<Character*> characters;
-			characters.push_back( new Character(gRenderer, make_tuple(250,400), make_tuple(0,410)));
-			characters.push_back( new Character(gRenderer, make_tuple(750,400), make_tuple(540,950), "Char3"));
-			characters.push_back( new Character(gRenderer, make_tuple(50,400), make_tuple(0,410), "Char2", false));
-			characters.push_back( new Character(gRenderer, make_tuple(950,400), make_tuple(540,950), "Char4", false));
+			characters.push_back( new Character(gRenderer, make_tuple(250,500), make_tuple(0,410)));
+			characters.push_back( new Character(gRenderer, make_tuple(750,500), make_tuple(540,950), "Char3"));
+			characters.push_back( new Character(gRenderer, make_tuple(50,500), make_tuple(0,410), "Char2", false));
+			characters.push_back( new Character(gRenderer, make_tuple(950,500), make_tuple(540,950), "Char4", false));
 			Ball* ball = nullptr;    //70,300
 			while( quit == false ){ 
 				// cout<<gameStateToString(game)<<endl;
@@ -226,7 +226,7 @@ int main( int argc, char* args[] )
 							delete ball;
 							ball = nullptr;
 						}
-						ball = new Ball(gRenderer, make_tuple(70,300));
+						ball = new Ball(gRenderer, make_tuple(0,400));
 					} 
 				}
 				if(game != START){
@@ -239,10 +239,10 @@ int main( int argc, char* args[] )
 					}
 					if(game != SETUP){          // RUN, PAUSE
 						if(!ball->Isdead()){
-							// if(ball->update_position() && game != PAUSE){
-							// 	countdown_start_time = SDL_GetTicks();
-							// 	game = PAUSE;
-							// } 
+							if(ball->update_position() && game != PAUSE){
+								countdown_start_time = SDL_GetTicks();
+								game = PAUSE;
+							} 
 							ball->render();
 						}
 						TSL = assets[LEFT];
