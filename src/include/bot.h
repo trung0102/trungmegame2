@@ -5,6 +5,7 @@
 #include <tuple>
 #include <iostream>
 #include <cmath>
+#include <queue>
 using namespace std;
 
 extern SDL_Renderer* gRenderer;
@@ -26,6 +27,8 @@ struct ActionData{
 }; 
 // maxframe, url_asset
 
+extern int LEFT, RIGHT;
+
 struct Vec2 {
     float x = 0.0f;
     float y = 0.0f;
@@ -37,14 +40,14 @@ struct Vec2 {
     Vec2& operator+=(const Vec2& o){ x+=o.x; y+=o.y; return *this;}
     Vec2& operator*=(float s){ x*=s; y*=s; return *this;}
     Vec2 normalize() const {
-        double mag = std::sqrt(x * x + y * y);
+        float mag = std::sqrt(x * x + y * y);
         return mag > 0 ? Vec2(x / mag, y / mag) : *this;
     }
     bool operator==(const Vec2& other) const {
         return x == other.x && y == other.y;
     }
-    double dodaibinh() const {return x*x + y*y;}
-    double dot(const Vec2& v) const { return x * v.x + y * v.y ; } // tích vô hướng
+    float dodaibinh() const {return x*x + y*y;}
+    float dot(const Vec2& v) const { return x * v.x + y * v.y ; } // tích vô hướng
 };
 
 struct KeyMap {
@@ -88,14 +91,16 @@ private:
     SDL_Renderer* gRenderer;
     SDL_FlipMode flipType;
     KeyMap keymap;
+    bool is_control;
 
 public:
-    Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range, string name = "Char1");
+    Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range, string name = "Char1", bool is_control=true);
     ~Character();
     void render();
     void update_position();
     void getKeyboardEvent(SDL_KeyboardEvent keyEvent);
     CharCollisionBall checkCollision(const SDL_FRect& b);
+    void changeControl(){this->is_control = !this->is_control;}
 };
 
 // inline float deg2rad(float deg){ return deg * 3.14159265358979323846f / 180.0f; }
@@ -115,7 +120,7 @@ public:
     Vec2 direction_vector(float x0);
     float getV0() {return this->v0;}
     float getAlpha() {return this->alpha;}
-
+    float SolveEquation(float y = 585);
 };
 class Ball
 {
@@ -131,13 +136,19 @@ private:
     int idex = 0;
     int isdead = 0;
     SDL_Renderer* gRenderer;
+    queue <tuple<int, int>> queue_pos;
+    SDL_Texture *duanh;
+    SDL_Texture *dubao;
+    bool can_touch = true;
+    float y_dubao;
+    float x_dubao;
     
 public:
-    Ball(SDL_Renderer* gRenderer, tuple<int, int> position);
+    Ball(SDL_Renderer* gRenderer, tuple<int, int> position,string a="LEFT");
     ~Ball();
-    void update_position();
+    bool update_position();
     void render();
     void collide(string str);
-    bool Isdead(){ return this->isdead == 100;}
+    bool Isdead(){ return this->isdead == 5;}
     void checkCollision(Character* character);
 };

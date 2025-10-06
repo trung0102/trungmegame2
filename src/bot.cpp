@@ -1,6 +1,8 @@
 #include "include/bot.h"
+#include "include/AI.h"
 
-const int SAN_BALL = 455;
+int LEFT = 0, RIGHT = 0;
+const int SAN_BALL = 555;
 KeyMap LeftKeys = { SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D };
 KeyMap RightKeys = { SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT };
 
@@ -14,7 +16,7 @@ unordered_map<PlayerAction, ActionData> actionData = {
     { PlayerAction::Pass,           {11, "assets/playerReception.png"} },
 };
 
-Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range,string name){
+Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range,string name, bool is_control){
     ActionData action = actionData[this->status];
     this->position = position;
     this->patrol_range = patrol_range;
@@ -24,6 +26,7 @@ Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<i
     this->dstRect = {float(get<0>(position)), float(get<1>(position)), 32*2, 48*2};
     this->name = name;
     this->gRenderer = gRenderer;
+    this->is_control = is_control;
     if(this->name == "Char1" || this->name == "Char2" ){
         this->flipType = SDL_FLIP_NONE;
         this->keymap = LeftKeys;
@@ -79,7 +82,7 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
             }
         this->status = PlayerAction::Idle;
     }
-    else{
+    else if(this->is_control){
         if(keyEvent.scancode == this->keymap.up){
             if(!this->y0){ 
                 this->y0 = get<1>(this->position);
@@ -102,7 +105,9 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
             else if(keyEvent.scancode == this->keymap.down){
                 this->status = PlayerAction::Pass;
             }
-            else{this->status = PlayerAction::Idle;}
+            else{
+                this->status = PlayerAction::Idle;
+            }
         }
     }
     
@@ -116,11 +121,11 @@ CharCollisionBall Character::checkCollision(const SDL_FRect& b){
     CharCollisionBall ret;
     SDL_FRect a;
     if(this->status == PlayerAction::Pass){
-        a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 35, this->dstRect.y + 45, 30,30}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 45, 30,30};
+        a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 45, this->dstRect.y + 65, 20,10}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 65, 20,10};
     }
     else if(this->status == PlayerAction::Spike){
         if(this->current_frame >5 && this->current_frame <8){
-            a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 20, this->dstRect.y + 20, 30,30}:SDL_FRect{this->dstRect.x+24, this->dstRect.y + 20, 30,30};
+            a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 40, this->dstRect.y + 20, 10,20}:SDL_FRect{this->dstRect.x+4, this->dstRect.y + 20, 10,20};
         }
     }
     else{
@@ -211,34 +216,66 @@ Vec2 direction_vector_A_to_B(Vec2 A, Vec2 B){
     return B-A;
 }
 
+float MotionEquation::SolveEquation(float y){
+    y = y - this->y0;
+    cout<< y<<endl;
+    if(this->a == 0){
+        return this->x0 + -(this->c - y)/this->b;
+    }
+    else{
+        float delta = this->b*this->b - 4*this->a*(this->c + y);
+        float tu_so;
+        float mau_so = 2*this->a;
+        if(this->alpha < M_PI/2){
+            tu_so = - this->b - sqrt(delta);
+            return this->x0 + tu_so/mau_so;
+        }
+        else{
+            tu_so = - this->b + sqrt(delta);
+            return this->x0 + tu_so/mau_so;
+        }
+    }
+}
 
 
 
 
 
 
-Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position){
+Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position, string a){
     this->current_frame = 0;
     this->position = position;
     this->max_frame = 8;
     this->gRenderer = gRenderer;
     this->surface = loadTexture("assets/ballRoll.png", gRenderer);
+    this->duanh = loadTexture("assets/duanh.png", gRenderer);
+    this->dubao = loadTexture("assets/vtrondubao.png", gRenderer);
     this->srcRect = {0, 5, 15, 15};
     this->dstRect = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
-    this->motition = new MotionEquation(1*M_PI/24, 100, get<0>(position), get<1>(position));
+    float theta = (a=="LEFT")?1*M_PI/24:M_PI - 1*M_PI/24;
+    this->motition = new MotionEquation(theta, 100, get<0>(position), get<1>(position));
+    this->y_dubao = SAN_BALL+30 - 5.66*4;
+    this->x_dubao = this->motition->SolveEquation();
     // Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,300));
     // this->motition = new MotionEquation(M_PI/4,200,get<0>(position), get<1>(position),a);
-    // cout<< this->motition->print()<<endl;
+    cout<< this->motition->print()<<endl;
+    for(int i=0;i<7;++i){
+        this->queue_pos.push(make_tuple(-50,0));
+    }
+    this->queue_pos.push(this->position);
 }
 Ball:: ~Ball(){
     SDL_DestroyTexture(this->surface);
     delete this->motition;
 }
-void Ball::update_position(){
+bool Ball::update_position(){
     this->current_frame = (this->current_frame +1) % (this->max_frame*2);
-    tuple<int,int> pos_ball = this->motition->position(0.067);
+    tuple<int,int> pos_ball = this->motition->position(0.067*1.5);
     // cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
     this->position = pos_ball;
+    this->queue_pos.pop();
+    this->queue_pos.push(this->position);
+    this->srcRect.x = (int(this->current_frame/2)%this->max_frame)*15;
     if(get<1>(this->position) > SAN_BALL) {
         get<1>(this->position) = SAN_BALL;
         this->collide("SAN");
@@ -248,13 +285,13 @@ void Ball::update_position(){
     //     // cout << "hahahaha" << endl;
     //     this->collide("NET");
     // }
-    this->srcRect.x = (int(this->current_frame/2)%this->max_frame)*15;
+    return !this->can_touch;
 }
 
 void Ball::collide(string str){
     Vec2 Oy,Ox;
     float base = 0;
-    bool rotateLeft = (this->motition->getAlpha() > M_PI/2)? true:false;
+    bool rotateLeft = (this->motition->getAlpha() > M_PI/2 && this->motition->getAlpha() < M_PI)? true:false;
     if(str == "SAN"){
         Oy = Vec2(0, -1);
         Ox = (rotateLeft)?Vec2(1, 0):Vec2(-1, 0);
@@ -263,6 +300,14 @@ void Ball::collide(string str){
         Oy = (rotateLeft)?Vec2(-1, 0):Vec2(1, 0);
         Ox = (rotateLeft)?Vec2(0, -1):Vec2(0, 1);
         base = 3*M_PI/2;
+    }
+    if(rotateLeft && this->can_touch){
+        RIGHT++;
+        this->can_touch = false;
+    }
+    else if(!rotateLeft && this->can_touch){
+        LEFT++;
+        this->can_touch = false;
     }
     this->isdead++;
     // cout<<"hahahah"<<endl;
@@ -278,30 +323,47 @@ void Ball::collide(string str){
         else if(theta < M_PI/2 && rotateLeft) theta = M_PI;
     }
     // cout<<"theta "<<theta<<endl;
-    double v0 = this->motition->getV0() * 0.75;
+    float v0 = this->motition->getV0() * 0.75;
     delete this->motition;
     this->motition = new MotionEquation(theta, v0, get<0>(this->position), get<1>(this->position));
+    this->x_dubao = this->motition->SolveEquation();
 }
 
 void Ball::render(){
+    cout<<this->x_dubao<<"   "<<this->y_dubao<<endl;
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
+    SDL_FRect srcR = {105, 5, 15, 15};
+    SDL_FRect dstR = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
+    queue <tuple<int, int>> tmp = this->queue_pos;
+    for (int i=0;!tmp.empty(); i = (i+1)%16) {
+        tuple<int, int> posi = tmp.front();
+        srcR.x = 105 - (int(i/2)%8)*15;
+        dstR = {float(get<0>(posi)), float(get<1>(posi)), 15*2, 15*2};
+        tmp.pop();
+        SDL_RenderTexture(this->gRenderer, this->duanh, &srcR, &dstR);
+    }
     SDL_RenderTexture(this->gRenderer, this->surface, &srcRect, &dstRect);
+    SDL_RenderTexture(this->gRenderer, this->dubao, new SDL_FRect{0,0,281,106}, new SDL_FRect{this->x_dubao,this->y_dubao,60,5.66*4});
     // SDL_RenderTextureRotated(this->gRenderer, this->surface, &srcRect, &dstRect,0,NULL,SDL_FLIP_HORIZONTAL);
     // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
 }
 
 void Ball::checkCollision(Character* character){
+    if(!this->can_touch) return;
     CharCollisionBall ele = character->checkCollision(this->dstRect);
     if(ele.is_collision){
         delete this->motition;
-        if(ele.action == PlayerAction::Pass)
+        if(ele.action == PlayerAction::Pass){
             this->motition = new MotionEquation(ele.alpha, ele.v0, get<0>(this->position), get<1>(this->position));
+            this->x_dubao = this->motition->SolveEquation();
+        }    
         else{
-            Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,400));
+            Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,500));
             this->motition = new MotionEquation(ele.alpha, ele.v0,get<0>(position), get<1>(position),a);
+            this->x_dubao = this->motition->SolveEquation();
         }
-        // cout<< this->motition->print()<<endl;
+        cout<< this->motition->print()<<endl;
     }
 }
 
