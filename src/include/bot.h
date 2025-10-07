@@ -1,3 +1,4 @@
+#pragma once
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 #include <stdio.h>
@@ -73,12 +74,17 @@ struct CharCollisionBall{
 // Map từ enum -> dữ liệu
 extern unordered_map<PlayerAction, ActionData> actionData;
 
+class AIControl;
+class Ball;
+class MotionEquation;
+
 class Character
 {
 private:
     /* data */
     PlayerAction status = PlayerAction::Idle;
     tuple<int, int> position;
+    tuple<int, int> pos_0;
     tuple<int, int> patrol_range;
     int current_frame = 0;
     int max_frame;
@@ -92,6 +98,7 @@ private:
     SDL_FlipMode flipType;
     KeyMap keymap;
     bool is_control;
+    AIControl* AIcontrol;
 
 public:
     Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range, string name = "Char1", bool is_control=true);
@@ -101,7 +108,16 @@ public:
     void getKeyboardEvent(SDL_KeyboardEvent keyEvent);
     CharCollisionBall checkCollision(const SDL_FRect& b);
     void changeControl(){this->is_control = !this->is_control;}
-};
+    float GetY(){return float(get<1>(this->position));}
+    float GetX(){return float(get<0>(this->position));}
+    bool isLeft();
+    void SetAIControl(Ball* ball);
+    void setPosition(){
+        this->position = this->pos_0;
+    }
+    string GetName(){return this->name;}
+    PlayerAction GetStatus(){return this->status;}
+};  
 
 // inline float deg2rad(float deg){ return deg * 3.14159265358979323846f / 180.0f; }
 class MotionEquation
@@ -120,7 +136,7 @@ public:
     Vec2 direction_vector(float x0);
     float getV0() {return this->v0;}
     float getAlpha() {return this->alpha;}
-    float SolveEquation(float y = 585);
+    float SolveEquation(float y = 555);
 };
 class Ball
 {
@@ -142,6 +158,8 @@ private:
     bool can_touch = true;
     float y_dubao;
     float x_dubao;
+    string char_create_motition = "";
+    bool create_new_motition = false;
     
 public:
     Ball(SDL_Renderer* gRenderer, tuple<int, int> position,string a="LEFT");
@@ -151,4 +169,9 @@ public:
     void collide(string str);
     bool Isdead(){ return this->isdead == 5;}
     void checkCollision(Character* character);
+    float Get_x_dubao(float y){
+        return this->motition->SolveEquation(y);
+    }
+    float GetX(){return float(get<0>(this->position));}
+    bool is_new_motition(){return this->create_new_motition;}
 };

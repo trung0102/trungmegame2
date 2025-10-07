@@ -16,9 +16,10 @@ unordered_map<PlayerAction, ActionData> actionData = {
     { PlayerAction::Pass,           {11, "assets/playerReception.png"} },
 };
 
-Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range,string name, bool is_control){
+Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<int, int> patrol_range, string name, bool is_control){
     ActionData action = actionData[this->status];
     this->position = position;
+    this->pos_0 = position;
     this->patrol_range = patrol_range;
     this->max_frame = action.maxframe;
     this->surface = loadTexture(action.surface, gRenderer);
@@ -27,6 +28,7 @@ Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<i
     this->name = name;
     this->gRenderer = gRenderer;
     this->is_control = is_control;
+    this->AIcontrol = nullptr;
     if(this->name == "Char1" || this->name == "Char2" ){
         this->flipType = SDL_FLIP_NONE;
         this->keymap = LeftKeys;
@@ -39,19 +41,26 @@ Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<i
 }
 Character:: ~Character(){
     SDL_DestroyTexture(this->surface);
+    if (this->AIcontrol) {
+        delete this->AIcontrol;
+        this->AIcontrol = nullptr;
+    }
+}
+bool Character::isLeft(){
+    return this->keymap == LeftKeys;
 }
 void Character::update_position(){
     this->current_frame = (this->current_frame +1) % this->max_frame;
     this->srcRect.x = this->current_frame*32;
     int minX = get<0>(this->patrol_range);
     int maxX = get<1>(this->patrol_range);
-    bool dk1 = (this->flipType == SDL_FLIP_HORIZONTAL)? get<0>(this->position) > minX : get<0>(this->position) < maxX;
-    bool dk2 = (this->flipType == SDL_FLIP_HORIZONTAL)? get<0>(this->position) < maxX : get<0>(this->position) > minX;
-    if(this->status == PlayerAction::MoveForward  && dk1) get<0>(this->position) += this->speed;
+    bool dk1 = (!this->isLeft())? get<0>(this->position) > minX : get<0>(this->position) < maxX;
+    bool dk2 = (!this->isLeft())? get<0>(this->position) < maxX : get<0>(this->position) > minX;
+    if(this->status == PlayerAction::MoveForward && dk1) get<0>(this->position) += this->speed;
     else if(this->status == PlayerAction::MoveBackward  && dk2) get<0>(this->position) -= (this->speed*3)/5;
     else if (this->status == PlayerAction::Spike ){
         int tmp = get<0>(this->position) + this->speed*2/5;
-        dk1 = (this->flipType == SDL_FLIP_HORIZONTAL)? tmp > minX : tmp < maxX;
+        dk1 = (!this->isLeft())? tmp > minX : tmp < maxX;
         if(dk1){get<0>(this->position) = tmp;}
         if(this->current_frame < 6){
             // cout<<"nhay"<<endl;
@@ -74,45 +83,53 @@ void Character::render(){
 
 void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
     PlayerAction curr_status = this->status;
-    if (keyEvent.type == SDL_EVENT_KEY_UP){
-        if(this->y0){ 
-                // cout<<this->y0<<endl;
-                get<1>(this->position) = this->y0;
-                this->y0=0;
-            }
-        this->status = PlayerAction::Idle;
-    }
-    else if(this->is_control){
-        if(keyEvent.scancode == this->keymap.up){
-            if(!this->y0){ 
-                this->y0 = get<1>(this->position);
-                // cout<<this->y0<<endl;
-            }
-            this->status = PlayerAction::Spike;
+    if(this->is_control){
+        if (keyEvent.type == SDL_EVENT_KEY_UP){
+            if(this->y0){ 
+                    // cout<<this->y0<<endl;
+                    get<1>(this->position) = this->y0;
+                    this->y0=0;
+                }
+            this->status = PlayerAction::Idle;
         }
         else{
-            if(this->y0){ 
-                // cout<<this->y0<<endl;
-                get<1>(this->position) = this->y0;
-                this->y0=0;
-            }
-            if(keyEvent.scancode == this->keymap.left){
-                this->status = PlayerAction::MoveBackward;
-            }
-            else if(keyEvent.scancode == this->keymap.right){
-                this->status = PlayerAction::MoveForward;
-            }
-            else if(keyEvent.scancode == this->keymap.down){
-                this->status = PlayerAction::Pass;
+            if(keyEvent.scancode == this->keymap.up){
+                if(!this->y0){ 
+                    this->y0 = get<1>(this->position);
+                    // cout<<this->y0<<endl;
+                }
+                this->status = PlayerAction::Spike;
             }
             else{
-                this->status = PlayerAction::Idle;
+                if(this->y0){ 
+                    // cout<<this->y0<<endl;
+                    get<1>(this->position) = this->y0;
+                    this->y0=0;
+                }
+                if(keyEvent.scancode == this->keymap.left){
+                    this->status = PlayerAction::MoveBackward;
+                }
+                else if(keyEvent.scancode == this->keymap.right){
+                    this->status = PlayerAction::MoveForward;
+                }
+                else if(keyEvent.scancode == this->keymap.down){
+                    this->status = PlayerAction::Pass;
+                }
+                else{
+                    this->status = PlayerAction::Idle;
+                }
             }
         }
     }
+    else{
+        // cout<< this->name<<"   ";
+        if(!this->AIcontrol) cout<<"Not AI"<<endl;
+        this->status = this->AIcontrol->Control();
+    }
+    
     
     if(curr_status != this->status) this->current_frame = 0;
-    ActionData action = actionData[status];
+    ActionData action = actionData[this->status];
     this->max_frame = action.maxframe;
     this->surface = loadTexture(action.surface, this->gRenderer);
 }
@@ -121,11 +138,11 @@ CharCollisionBall Character::checkCollision(const SDL_FRect& b){
     CharCollisionBall ret;
     SDL_FRect a;
     if(this->status == PlayerAction::Pass){
-        a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 45, this->dstRect.y + 65, 20,10}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 65, 20,10};
+        a = (this->isLeft())?SDL_FRect{this->dstRect.x + 45, this->dstRect.y + 65, 20,10}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 65, 20,10};
     }
     else if(this->status == PlayerAction::Spike){
         if(this->current_frame >5 && this->current_frame <8){
-            a = (this->keymap == LeftKeys)?SDL_FRect{this->dstRect.x + 40, this->dstRect.y + 20, 10,20}:SDL_FRect{this->dstRect.x+4, this->dstRect.y + 20, 10,20};
+            a = (this->isLeft())?SDL_FRect{this->dstRect.x + 40, this->dstRect.y + 20, 10,20}:SDL_FRect{this->dstRect.x+4, this->dstRect.y + 20, 10,20};
         }
     }
     else{
@@ -139,12 +156,19 @@ CharCollisionBall Character::checkCollision(const SDL_FRect& b){
         ret.v0 = (this->status == PlayerAction::Spike)?200:80;
         int value = rand() % (80 - 60 + 1) + 60;    // random tu 75 den 85
         // cout<<value<<endl;
-        ret.alpha = (this->keymap == LeftKeys)?value*M_PI/180:(180-value)*M_PI/180;
+        ret.alpha = (this->isLeft())?value*M_PI/180:(180-value)*M_PI/180;
     }
     ret.action = this->status;
     return ret;
 }
-
+void Character::SetAIControl(Ball* ball){
+        if (this->AIcontrol) {
+            delete this->AIcontrol;
+            this->AIcontrol = nullptr;
+        }
+        this->AIcontrol = new AIControl(this, ball);
+        if(this->AIcontrol) cout<<"Da co AI"<<endl;
+    }
 
 
 
@@ -218,7 +242,7 @@ Vec2 direction_vector_A_to_B(Vec2 A, Vec2 B){
 
 float MotionEquation::SolveEquation(float y){
     y = y - this->y0;
-    cout<< y<<endl;
+    // cout<< y<<endl;
     if(this->a == 0){
         return this->x0 + -(this->c - y)/this->b;
     }
@@ -258,7 +282,7 @@ Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position, string a){
     this->x_dubao = this->motition->SolveEquation();
     // Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,300));
     // this->motition = new MotionEquation(M_PI/4,200,get<0>(position), get<1>(position),a);
-    cout<< this->motition->print()<<endl;
+    // cout<< this->motition->print()<<endl;
     for(int i=0;i<7;++i){
         this->queue_pos.push(make_tuple(-50,0));
     }
@@ -279,12 +303,14 @@ bool Ball::update_position(){
     if(get<1>(this->position) > SAN_BALL) {
         get<1>(this->position) = SAN_BALL;
         this->collide("SAN");
+        this->create_new_motition = true;
     }
     // else if (487 <= get<0>(this->position) + 30 && 502 >= get<0>(this->position) + 30 &&
     //      364 <= get<1>(this->position) + 30 && 479 >= get<1>(this->position) + 30) {
     //     // cout << "hahahaha" << endl;
     //     this->collide("NET");
     // }
+    else{ this->create_new_motition = false; }
     return !this->can_touch;
 }
 
@@ -330,7 +356,8 @@ void Ball::collide(string str){
 }
 
 void Ball::render(){
-    cout<<this->x_dubao<<"   "<<this->y_dubao<<endl;
+    // cout<<this->x_dubao<<"   "<<this->y_dubao<<endl;
+    if(this->create_new_motition) cout<<"New Motition"<<endl;
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
     SDL_FRect srcR = {105, 5, 15, 15};
@@ -344,7 +371,7 @@ void Ball::render(){
         SDL_RenderTexture(this->gRenderer, this->duanh, &srcR, &dstR);
     }
     SDL_RenderTexture(this->gRenderer, this->surface, &srcRect, &dstRect);
-    SDL_RenderTexture(this->gRenderer, this->dubao, new SDL_FRect{0,0,281,106}, new SDL_FRect{this->x_dubao,this->y_dubao,60,5.66*4});
+    SDL_RenderTexture(this->gRenderer, this->dubao, new SDL_FRect{0,0,281,106}, new SDL_FRect{this->x_dubao-15,this->y_dubao+20,60,5.66*4});
     // SDL_RenderTextureRotated(this->gRenderer, this->surface, &srcRect, &dstRect,0,NULL,SDL_FLIP_HORIZONTAL);
     // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
 }
@@ -354,16 +381,25 @@ void Ball::checkCollision(Character* character){
     CharCollisionBall ele = character->checkCollision(this->dstRect);
     if(ele.is_collision){
         delete this->motition;
+        this->create_new_motition = true;
+        this->char_create_motition = character->GetName();
+        float y0 = get<1>(this->position);
         if(ele.action == PlayerAction::Pass){
-            this->motition = new MotionEquation(ele.alpha, ele.v0, get<0>(this->position), get<1>(this->position));
+            this->motition = new MotionEquation(ele.alpha, ele.v0, get<0>(this->position), y0);
             this->x_dubao = this->motition->SolveEquation();
         }    
         else{
             Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,500));
-            this->motition = new MotionEquation(ele.alpha, ele.v0,get<0>(position), get<1>(position),a);
+            this->motition = new MotionEquation(ele.alpha, ele.v0,get<0>(position), y0,a);
             this->x_dubao = this->motition->SolveEquation();
         }
-        cout<< this->motition->print()<<endl;
+        // cout<< this->motition->print()<<endl;
+    }
+    else{
+        if(this->create_new_motition && this->char_create_motition == character->GetName()){
+            this->create_new_motition = false;
+            this->char_create_motition = "";
+        }
     }
 }
 
