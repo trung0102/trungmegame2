@@ -80,7 +80,7 @@ bool loadMedia()
 	bool success = true;
 	
 	//Load PNG surface
-	VCourtTexture = loadTexture( "assets/beach.jpg", gRenderer );
+	VCourtTexture = loadTexture( "assets/beach1.png", gRenderer );
 	VNetTexture = loadTexture( "assets/net0.png", gRenderer );
 	if( VCourtTexture == NULL )
 	{
@@ -120,11 +120,11 @@ void drawTS(int size = 0){
 }
 void drawCountdown(int countdown);
 void drawMap(){
-	SDL_FRect srcRect = {175, 0, 2395, 2268};
-	SDL_FRect dstRect = {0, 0, 1200, 750};
+	SDL_FRect srcRect = {0, 0, 400, 430};
+	SDL_FRect dstRect = {0, 0, 1000, 750};
 	SDL_RenderTexture(gRenderer, VCourtTexture, &srcRect, &dstRect);
 	srcRect = {((netframe/3)%6)*45.0f, 0, 45, 450};
-	dstRect = {450, 360, 170, 400};
+	dstRect = {485, 400, 45, 350};
 	SDL_RenderTexture(gRenderer, VNetTexture, &srcRect, &dstRect);
 	netframe = ((netframe +1))%18;
 }
@@ -191,28 +191,35 @@ int main( int argc, char* args[] )
     		const Uint64 frameTime = 1000 / targetFPS; // Thời gian mỗi khung hình (ms)
             SDL_Event e; bool quit = false;
 			vector<Character*> characters;
-			characters.push_back( new Character(gRenderer, make_tuple(250,500), make_tuple(0,410)));
-			characters.push_back( new Character(gRenderer, make_tuple(750,500), make_tuple(540,950), "Char3"));
-			characters.push_back( new Character(gRenderer, make_tuple(50,500), make_tuple(0,410), "Char2", false));
-			characters.push_back( new Character(gRenderer, make_tuple(950,500), make_tuple(540,950), "Char4", false));
+			characters.push_back( new Character(gRenderer, make_tuple(250,500), make_tuple(0,430)));
+			characters.push_back( new Character(gRenderer, make_tuple(750,500), make_tuple(530,950), "Char3"));
+			characters.push_back( new Character(gRenderer, make_tuple(50,500), make_tuple(0,430), "Char2", false));
+			characters.push_back( new Character(gRenderer, make_tuple(950,500), make_tuple(530,950), "Char4", false));
 			Ball* ball = nullptr;    //70,300
 			while( quit == false ){ 
 				// cout<<gameStateToString(game)<<endl;
+				SDL_KeyboardEvent key;
 				Uint64 frameStart = SDL_GetTicks();
 				while( SDL_PollEvent( &e ) ){ 
 					if( e.type == SDL_EVENT_QUIT ) quit = true; 
 					else if ((e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP) && game == RUN){
 						for (auto character : characters) {
-							if(e.key.scancode == SDL_SCANCODE_R && lastkey != SDL_SCANCODE_R) {cout<<"RRRRRRRRRRRRRRRRR"<<endl;character->changeControl();}
-        					character->getKeyboardEvent(e.key);
+							if(e.key.scancode == SDL_SCANCODE_R && lastkey != SDL_SCANCODE_R) {
+								cout<<"RRRRRRRRRRRRRRRRR"<<endl;
+								character->changeControl();
+							}
     					}
 						lastkey = e.key.scancode;
+						key = e.key;
 					}
 					else if (game == START && e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
 						float x = e.button.x, y=e.button.y;
 						if(x<650 && x>350 && y<425 && y>325){
 							game = SETUP;
 						}
+					}
+					else if ( e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
+						cout<< e.button.x<<endl;
 					}
 
 				}
@@ -221,16 +228,22 @@ int main( int argc, char* args[] )
 					drawCountdown(-1);
 					if(game == START) SDL_RenderTexture(gRenderer, TS, new SDL_FRect{0,0,500,500}, new SDL_FRect{350,325,300,100});
 					else{
-						game = RUN;
 						if(ball){
 							delete ball;
 							ball = nullptr;
 						}
 						ball = new Ball(gRenderer, make_tuple(0,400));
+						cout<<"Create new ball"<<endl;
 					} 
 				}
 				if(game != START){
 					for (auto character : characters) {
+						if(game == SETUP){
+							character->setPosition();
+							character->SetAIControl(ball);
+							cout<<"Set AI"<<endl;
+						}
+						character->getKeyboardEvent(key);
 						character->update_position();
 						character->render();
 						if(game == RUN && !ball->Isdead()){
@@ -251,6 +264,7 @@ int main( int argc, char* args[] )
 						//Update screen
 						drawTS();
 					}
+					else{ game = RUN;}
 					
 				}
 				
