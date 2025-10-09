@@ -32,11 +32,13 @@ Character:: Character(SDL_Renderer* gRenderer, tuple<int, int> position, tuple<i
     if(this->name == "Char1" || this->name == "Char2" ){
         this->flipType = SDL_FLIP_NONE;
         this->keymap = LeftKeys;
+        this->muiten = loadTexture("assets/mt2.png", gRenderer);
     }
     else{
         this->flipType = SDL_FLIP_HORIZONTAL;
         this->keymap = RightKeys;
         this->speed = - this->speed;
+        this->muiten = loadTexture("assets/mt2.png", gRenderer);
     }
 }
 Character:: ~Character(){
@@ -76,15 +78,17 @@ void Character::update_position(){
 void Character::render(){
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
+    if(this->is_control) 
+        SDL_RenderTexture(this->gRenderer, this->muiten, new SDL_FRect{0,0,980,980}, new SDL_FRect{float(get<0>(this->position))+10,float(get<1>(this->position))-50,32*2-20, 40});
     // SDL_RenderTexture(this->gRenderer, this->surface, &srcRect, &dstRect);
     SDL_RenderTextureRotated(this->gRenderer, this->surface, &srcRect, &dstRect,0,NULL,this->flipType);
     // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
 }
 
-void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
+void Character::getKeyboardEvent(SDL_Scancode keyEvent){
     PlayerAction curr_status = this->status;
     if(this->is_control){
-        if (keyEvent.type == SDL_EVENT_KEY_UP){
+        if (keyEvent == SDL_SCANCODE_UNKNOWN){
             if(this->y0){ 
                     // cout<<this->y0<<endl;
                     get<1>(this->position) = this->y0;
@@ -93,7 +97,7 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
             this->status = PlayerAction::Idle;
         }
         else{
-            if(keyEvent.scancode == this->keymap.up){
+            if(keyEvent == this->keymap.up){
                 if(!this->y0){ 
                     this->y0 = get<1>(this->position);
                     // cout<<this->y0<<endl;
@@ -106,13 +110,13 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
                     get<1>(this->position) = this->y0;
                     this->y0=0;
                 }
-                if(keyEvent.scancode == this->keymap.left){
+                if(keyEvent == this->keymap.left){
                     this->status = PlayerAction::MoveBackward;
                 }
-                else if(keyEvent.scancode == this->keymap.right){
+                else if(keyEvent == this->keymap.right){
                     this->status = PlayerAction::MoveForward;
                 }
-                else if(keyEvent.scancode == this->keymap.down){
+                else if(keyEvent == this->keymap.down){
                     this->status = PlayerAction::Pass;
                 }
                 else{
@@ -136,7 +140,7 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
 
 CharCollisionBall Character::checkCollision(const SDL_FRect& b){
     CharCollisionBall ret;
-    SDL_FRect a;
+    SDL_FRect a = {0,0,0,0};
     if(this->status == PlayerAction::Pass){
         a = (this->isLeft())?SDL_FRect{this->dstRect.x + 45, this->dstRect.y + 65, 20,10}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 65, 20,10};
     }
@@ -144,9 +148,6 @@ CharCollisionBall Character::checkCollision(const SDL_FRect& b){
         if(this->current_frame >5 && this->current_frame <8){
             a = (this->isLeft())?SDL_FRect{this->dstRect.x + 40, this->dstRect.y + 20, 10,20}:SDL_FRect{this->dstRect.x+4, this->dstRect.y + 20, 10,20};
         }
-    }
-    else{
-        a ={0,0,0,0};
     }
     if(a.x + a.w < b.x || a.x > b.x + b.w || a.y + a.h < b.y || a.y > b.y + b.h){ 
         ret.is_collision = false;
@@ -169,7 +170,9 @@ void Character::SetAIControl(Ball* ball){
         this->AIcontrol = new AIControl(this, ball);
         if(this->AIcontrol) cout<<"Da co AI"<<endl;
     }
-
+void Character::UpdateAI(){
+        if(!this->is_control) this->AIcontrol->UpdateAI();
+    }
 
 
 
@@ -241,12 +244,13 @@ Vec2 direction_vector_A_to_B(Vec2 A, Vec2 B){
 }
 
 float MotionEquation::SolveEquation(float y){
-    y = y - this->y0;
+    
     // cout<< y<<endl;
     if(this->a == 0){
-        return this->x0 + -(this->c - y)/this->b;
+        return (y-this->c)/this->b;
     }
     else{
+        y = y - this->y0;
         float delta = this->b*this->b - 4*this->a*(this->c + y);
         float tu_so;
         float mau_so = 2*this->a;
@@ -273,16 +277,16 @@ Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position, string a){
     this->gRenderer = gRenderer;
     this->surface = loadTexture("assets/ballRoll.png", gRenderer);
     this->duanh = loadTexture("assets/duanh.png", gRenderer);
-    this->dubao = loadTexture("assets/vtrondubao.png", gRenderer);
+    this->dubao = loadTexture("assets/vtrondubao2.png", gRenderer);
     this->srcRect = {0, 5, 15, 15};
     this->dstRect = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
     float theta = (a=="LEFT")?1*M_PI/24:M_PI - 1*M_PI/24;
     this->motition = new MotionEquation(theta, 100, get<0>(position), get<1>(position));
+    // Vec2 vec_a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(500,470));
+    // this->motition = new MotionEquation(M_PI/4,100,get<0>(position), get<1>(position),vec_a);
+    // cout<< this->motition->print()<<endl;
     this->y_dubao = SAN_BALL+30 - 5.66*4;
     this->x_dubao = this->motition->SolveEquation();
-    // Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,300));
-    // this->motition = new MotionEquation(M_PI/4,200,get<0>(position), get<1>(position),a);
-    // cout<< this->motition->print()<<endl;
     for(int i=0;i<7;++i){
         this->queue_pos.push(make_tuple(-50,0));
     }
@@ -297,11 +301,10 @@ bool Ball::update_position(){
     tuple<int,int> pos_ball = this->motition->position(0.067*1.5);
     // cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
     this->position = pos_ball;
-    this->queue_pos.pop();
-    this->queue_pos.push(this->position);
     this->srcRect.x = (int(this->current_frame/2)%this->max_frame)*15;
     if(get<1>(this->position) > SAN_BALL) {
         get<1>(this->position) = SAN_BALL;
+        get<0>(this->position) = this->Get_x_dubao(SAN_BALL);
         this->collide("SAN");
         this->create_new_motition = true;
     }
@@ -311,6 +314,8 @@ bool Ball::update_position(){
     //     this->collide("NET");
     // }
     else{ this->create_new_motition = false; }
+    this->queue_pos.pop();
+    this->queue_pos.push(this->position);
     return !this->can_touch;
 }
 
@@ -328,11 +333,13 @@ void Ball::collide(string str){
         base = 3*M_PI/2;
     }
     if(rotateLeft && this->can_touch){
-        RIGHT++;
+        if(this->GetX() < 20) LEFT++;
+        else RIGHT++;
         this->can_touch = false;
     }
     else if(!rotateLeft && this->can_touch){
-        LEFT++;
+        if(this->GetX() > 950) RIGHT++;
+        else LEFT++;
         this->can_touch = false;
     }
     this->isdead++;
@@ -357,7 +364,7 @@ void Ball::collide(string str){
 
 void Ball::render(){
     // cout<<this->x_dubao<<"   "<<this->y_dubao<<endl;
-    if(this->create_new_motition) cout<<"New Motition"<<endl;
+    // if(this->create_new_motition) cout<<"New Motition"<<endl;
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
     SDL_FRect srcR = {105, 5, 15, 15};
@@ -371,9 +378,14 @@ void Ball::render(){
         SDL_RenderTexture(this->gRenderer, this->duanh, &srcR, &dstR);
     }
     SDL_RenderTexture(this->gRenderer, this->surface, &srcRect, &dstRect);
-    SDL_RenderTexture(this->gRenderer, this->dubao, new SDL_FRect{0,0,281,106}, new SDL_FRect{this->x_dubao-15,this->y_dubao+20,60,5.66*4});
+    // this->print();
     // SDL_RenderTextureRotated(this->gRenderer, this->surface, &srcRect, &dstRect,0,NULL,SDL_FLIP_HORIZONTAL);
     // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
+}
+void Ball::renderBallEffects(){
+    // SDL_RenderTextureRotated(this->gRenderer, this->dubao, new SDL_FRect{0,0,2048,2048}, new SDL_FRect{this->x_dubao-15,this->y_dubao+20,60,5.66*4},-15,NULL,SDL_FlipMode::SDL_FLIP_NONE);
+    // cout<<"Du bao: "<<this->x_dubao<<endl;
+    SDL_RenderTexture(this->gRenderer, this->dubao, new SDL_FRect{0,0,281,106}, new SDL_FRect{this->x_dubao-15,this->y_dubao+20,60,5.66*4});
 }
 
 void Ball::checkCollision(Character* character){
@@ -389,7 +401,8 @@ void Ball::checkCollision(Character* character){
             this->x_dubao = this->motition->SolveEquation();
         }    
         else{
-            Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(450,500));
+            // cout<<"SPIKE"<<endl;
+            Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(500,470));
             this->motition = new MotionEquation(ele.alpha, ele.v0,get<0>(position), y0,a);
             this->x_dubao = this->motition->SolveEquation();
         }

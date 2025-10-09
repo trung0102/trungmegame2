@@ -12,6 +12,7 @@ and may not be redistributed without written permission.*/
 //Screen dimension constants
 const int SCREEN_WIDTH = 1000;
 const int SCREEN_HEIGHT = 750;
+int currLEFT=0, currRIGHT=0;
 // enum State = {START, PAUSE, RUN};
 //Starts up SDL and creates window
 bool init();
@@ -42,7 +43,7 @@ SDL_Renderer* gRenderer = NULL;
 //Current displayed PNG image
 SDL_Texture* VCourtTexture = NULL;
 SDL_Texture* VNetTexture = NULL;
-SDL_Texture* TSL,*TSR,*TS = NULL;
+SDL_Texture* TSL,*TSR,*TS, *start = NULL;
 int netframe = 0;
 unordered_map<int, SDL_Texture*> assets;
 bool init()
@@ -110,6 +111,7 @@ bool loadMedia()
     { 18,   loadTexture("assets/green_8.png", gRenderer ) },
     { 19,   loadTexture("assets/green_9.png", gRenderer ) }};
 	TS = loadTexture("assets/bangtiso.png", gRenderer );
+	start = loadTexture("assets/start.png", gRenderer );
 
 	return success;
 }
@@ -152,6 +154,22 @@ void drawPause(Uint32 start){
 		game = SETUP;
 	}       
 }
+void handleKeyboard(const bool* state, Character* character){
+	if (character->isLeft()) {
+		if (state[SDL_SCANCODE_W]) character->getKeyboardEvent(SDL_SCANCODE_W);
+		else if (state[SDL_SCANCODE_S]) character->getKeyboardEvent(SDL_SCANCODE_S);
+		else if (state[SDL_SCANCODE_A]) character->getKeyboardEvent(SDL_SCANCODE_A);
+		else if (state[SDL_SCANCODE_D]) character->getKeyboardEvent(SDL_SCANCODE_D);
+		else character->getKeyboardEvent(SDL_SCANCODE_UNKNOWN);
+	}
+	else if (!character->isLeft()) {
+		if (state[SDL_SCANCODE_UP]) character->getKeyboardEvent(SDL_SCANCODE_UP);
+		else if (state[SDL_SCANCODE_DOWN]) character->getKeyboardEvent(SDL_SCANCODE_DOWN);
+		else if (state[SDL_SCANCODE_LEFT]) character->getKeyboardEvent(SDL_SCANCODE_LEFT);
+		else if (state[SDL_SCANCODE_RIGHT]) character->getKeyboardEvent(SDL_SCANCODE_RIGHT);
+		else character->getKeyboardEvent(SDL_SCANCODE_UNKNOWN);
+	}
+}
 void close()
 {
 	//Free loaded image
@@ -171,7 +189,8 @@ void close()
 }
 
 int main( int argc, char* args[] )
-{
+{	
+	int count = 0;
 	//Start up SDL and create window
 	if( !init() )
 	{
@@ -198,19 +217,19 @@ int main( int argc, char* args[] )
 			Ball* ball = nullptr;    //70,300
 			while( quit == false ){ 
 				// cout<<gameStateToString(game)<<endl;
-				SDL_KeyboardEvent key;
 				Uint64 frameStart = SDL_GetTicks();
 				while( SDL_PollEvent( &e ) ){ 
 					if( e.type == SDL_EVENT_QUIT ) quit = true; 
-					else if ((e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP) && game == RUN){
+					else if (e.type == SDL_EVENT_KEY_DOWN && game == RUN){
 						for (auto character : characters) {
 							if(e.key.scancode == SDL_SCANCODE_R && lastkey != SDL_SCANCODE_R) {
-								cout<<"RRRRRRRRRRRRRRRRR"<<endl;
-								character->changeControl();
+								if(character->isLeft()) character->changeControl();
+							}
+							else if(e.key.scancode == SDL_SCANCODE_KP_7 && lastkey != SDL_SCANCODE_KP_7) {
+								if(!character->isLeft()) character->changeControl();
 							}
     					}
 						lastkey = e.key.scancode;
-						key = e.key;
 					}
 					else if (game == START && e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
 						float x = e.button.x, y=e.button.y;
@@ -219,37 +238,52 @@ int main( int argc, char* args[] )
 						}
 					}
 					else if ( e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
-						cout<< e.button.x<<endl;
+						cout<< e.button.x<<"   "<<e.button.y<<endl;
 					}
 
 				}
 				drawMap();
+				SDL_PumpEvents();
+				const bool* state = SDL_GetKeyboardState(NULL);
 				if(game == START || game == SETUP){
 					drawCountdown(-1);
-					if(game == START) SDL_RenderTexture(gRenderer, TS, new SDL_FRect{0,0,500,500}, new SDL_FRect{350,325,300,100});
+					if(game == START) SDL_RenderTexture(gRenderer, start, new SDL_FRect{0,0,870,364}, new SDL_FRect{350,325,300,100});
 					else{
 						if(ball){
 							delete ball;
 							ball = nullptr;
 						}
-						ball = new Ball(gRenderer, make_tuple(0,400));
+						// ball = new Ball(gRenderer, make_tuple(0,400));
+						if(currLEFT < LEFT){
+							currLEFT = LEFT;
+							ball = new Ball(gRenderer, make_tuple(970,400),"RIGHT");
+						}
+						else{
+							currRIGHT = RIGHT;
+							ball = new Ball(gRenderer, make_tuple(0,400));
+						} 
 						cout<<"Create new ball"<<endl;
 					} 
 				}
 				if(game != START){
+					ball->renderBallEffects();
 					for (auto character : characters) {
 						if(game == SETUP){
 							character->setPosition();
 							character->SetAIControl(ball);
 							cout<<"Set AI"<<endl;
 						}
-						character->getKeyboardEvent(key);
+						if(count++ > 20){
+							character->UpdateAI();
+						}
+						handleKeyboard(state, character);
 						character->update_position();
 						character->render();
 						if(game == RUN && !ball->Isdead()){
 							ball->checkCollision(character); // nguoi danh dc bong
 						}
 					}
+					if(count++ > 20){count=0;}
 					if(game != SETUP){          // RUN, PAUSE
 						if(!ball->Isdead()){
 							if(ball->update_position() && game != PAUSE){

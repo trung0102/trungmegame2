@@ -13,5 +13,9 @@ public:
     ~AIControl();
     void SetBall(Ball* newball){this->ball = newball;}
     PlayerAction Control();
+    void UpdateAI(){
+        // cout<<"New Motition"<<endl;
+        this->x_dubao = this->ball->Get_x_dubao(this->character->GetY() + 65 );
+    }
 };
 
