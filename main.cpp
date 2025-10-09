@@ -152,6 +152,12 @@ void drawPause(Uint32 start){
 		game = SETUP;
 	}       
 }
+// void handleKeyboard(const bool* state, Character* character){
+// 	if (character->isLeft() && (state[SDL_SCANCODE_W] || state[SDL_SCANCODE_S] || state[SDL_SCANCODE_A] || state[SDL_SCANCODE_D])){
+// 		character->getKeyboardEvent(SDL_SCANCODE_W);
+// 	}
+// 	else if(state[SDL_SCANCODE_UP] || state[SDL_SCANCODE_DOWN] || state[SDL_SCANCODE_RIGHT] || state[SDL_SCANCODE_LEFT])
+// }
 void close()
 {
 	//Free loaded image
@@ -206,8 +212,12 @@ int main( int argc, char* args[] )
 					else if ((e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP) && game == RUN){
 						for (auto character : characters) {
 							if(e.key.scancode == SDL_SCANCODE_R && lastkey != SDL_SCANCODE_R) {
-								cout<<"RRRRRRRRRRRRRRRRR"<<endl;
-								character->changeControl();
+								// cout<<"RRRRRRRRRRRRRRRRR"<<endl;
+								if(character->isLeft()) character->changeControl();
+							}
+							else if(e.key.scancode == SDL_SCANCODE_KP_7 && lastkey != SDL_SCANCODE_KP_7) {
+								// cout<<"777777777777777777"<<endl;
+								if(!character->isLeft()) character->changeControl();
 							}
     					}
 						lastkey = e.key.scancode;
@@ -225,6 +235,9 @@ int main( int argc, char* args[] )
 
 				}
 				drawMap();
+				// SDL_PumpEvents();
+				// const bool* state = SDL_GetKeyboardState(NULL);
+				// handleKeyboard(state);
 				if(game == START || game == SETUP){
 					drawCountdown(-1);
 					if(game == START) SDL_RenderTexture(gRenderer, TS, new SDL_FRect{0,0,500,500}, new SDL_FRect{350,325,300,100});

@@ -28,7 +28,7 @@ PlayerAction AIControl::Control(){
         return PlayerAction::Idle;
     if(this->x_dubao > 500 && !this->character->isLeft()){  
         if(fabs(this->ball->GetX() - this->x_dubao) <= 15 ||(this->ball->GetY()+20 > 565)){
-            cout<<"PASS"<<endl;
+            // cout<<"PASS"<<endl;
             if(this->counter++ <7) return PlayerAction::Pass;
         }
         else if(X_char-1 > x){
@@ -42,7 +42,7 @@ PlayerAction AIControl::Control(){
     }
     else if(this->x_dubao < 500 && this->character->isLeft()){  
         if(fabs(this->ball->GetX() - this->x_dubao) <= 15 ||(this->ball->GetY()+50 > 565)){
-            cout<<"PASS"<<endl;
+            // cout<<"PASS"<<endl;
             if(this->counter++ <7) return PlayerAction::Pass;
         }
         else if(X_char + 30 + 20 < x){

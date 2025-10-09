@@ -140,7 +140,7 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
 
 CharCollisionBall Character::checkCollision(const SDL_FRect& b){
     CharCollisionBall ret;
-    SDL_FRect a;
+    SDL_FRect a = {0,0,0,0};
     if(this->status == PlayerAction::Pass){
         a = (this->isLeft())?SDL_FRect{this->dstRect.x + 45, this->dstRect.y + 65, 20,10}:SDL_FRect{this->dstRect.x-1, this->dstRect.y + 65, 20,10};
     }
@@ -149,16 +149,11 @@ CharCollisionBall Character::checkCollision(const SDL_FRect& b){
             a = (this->isLeft())?SDL_FRect{this->dstRect.x + 40, this->dstRect.y + 20, 10,20}:SDL_FRect{this->dstRect.x+4, this->dstRect.y + 20, 10,20};
         }
     }
-    else{
-        a ={0,0,0,0};
-    }
     if(a.x + a.w < b.x || a.x > b.x + b.w || a.y + a.h < b.y || a.y > b.y + b.h){ 
         ret.is_collision = false;
-        cout<<"NOT CHAM"<<endl;
     }
     else{
         ret.is_collision = true;
-        cout<<"CHAM"<<endl;
         ret.v0 = (this->status == PlayerAction::Spike)?200:80;
         int value = rand() % (80 - 60 + 1) + 60;    // random tu 75 den 85
         // cout<<value<<endl;
@@ -289,7 +284,7 @@ Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position, string a){
     // this->motition = new MotionEquation(theta, 100, get<0>(position), get<1>(position));
     Vec2 vec_a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(500,470));
     this->motition = new MotionEquation(M_PI/4,100,get<0>(position), get<1>(position),vec_a);
-    cout<< this->motition->print()<<endl;
+    // cout<< this->motition->print()<<endl;
     this->y_dubao = SAN_BALL+30 - 5.66*4;
     this->x_dubao = this->motition->SolveEquation();
     for(int i=0;i<7;++i){
@@ -306,8 +301,6 @@ bool Ball::update_position(){
     tuple<int,int> pos_ball = this->motition->position(0.067*1.5);
     // cout << get<0>(pos_ball) << "  " << get<1>(pos_ball)<<endl;
     this->position = pos_ball;
-    this->queue_pos.pop();
-    this->queue_pos.push(this->position);
     this->srcRect.x = (int(this->current_frame/2)%this->max_frame)*15;
     if(get<1>(this->position) > SAN_BALL) {
         get<1>(this->position) = SAN_BALL;
@@ -321,6 +314,8 @@ bool Ball::update_position(){
     //     this->collide("NET");
     // }
     else{ this->create_new_motition = false; }
+    this->queue_pos.pop();
+    this->queue_pos.push(this->position);
     return !this->can_touch;
 }
 
@@ -369,7 +364,7 @@ void Ball::collide(string str){
 
 void Ball::render(){
     // cout<<this->x_dubao<<"   "<<this->y_dubao<<endl;
-    if(this->create_new_motition) cout<<"New Motition"<<endl;
+    // if(this->create_new_motition) cout<<"New Motition"<<endl;
     this->dstRect.x = get<0>(this->position);
     this->dstRect.y = get<1>(this->position);
     SDL_FRect srcR = {105, 5, 15, 15};
@@ -389,19 +384,13 @@ void Ball::render(){
 }
 void Ball::renderBallEffects(){
     // SDL_RenderTextureRotated(this->gRenderer, this->dubao, new SDL_FRect{0,0,2048,2048}, new SDL_FRect{this->x_dubao-15,this->y_dubao+20,60,5.66*4},-15,NULL,SDL_FlipMode::SDL_FLIP_NONE);
-    cout<<"Du bao: "<<this->x_dubao<<endl;
+    // cout<<"Du bao: "<<this->x_dubao<<endl;
     SDL_RenderTexture(this->gRenderer, this->dubao, new SDL_FRect{0,0,281,106}, new SDL_FRect{this->x_dubao-15,this->y_dubao+20,60,5.66*4});
 }
 
 void Ball::checkCollision(Character* character){
     if(!this->can_touch) return;
     CharCollisionBall ele = character->checkCollision(this->dstRect);
-    if(ele.is_collision){
-        cout<<"CHAM"<<endl;
-    }
-    else{
-        cout<<"NOT CHAM"<<endl;
-        }
     if(ele.is_collision){
         delete this->motition;
         this->create_new_motition = true;
@@ -412,12 +401,12 @@ void Ball::checkCollision(Character* character){
             this->x_dubao = this->motition->SolveEquation();
         }    
         else{
-            cout<<"SPIKE"<<endl;
+            // cout<<"SPIKE"<<endl;
             Vec2 a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(500,470));
             this->motition = new MotionEquation(ele.alpha, ele.v0,get<0>(position), y0,a);
             this->x_dubao = this->motition->SolveEquation();
         }
-        cout<< this->motition->print()<<endl;
+        // cout<< this->motition->print()<<endl;
     }
     else{
         if(this->create_new_motition && this->char_create_motition == character->GetName()){
