@@ -171,7 +171,8 @@ void close()
 }
 
 int main( int argc, char* args[] )
-{
+{	
+	int count = 0;
 	//Start up SDL and create window
 	if( !init() )
 	{
@@ -219,7 +220,7 @@ int main( int argc, char* args[] )
 						}
 					}
 					else if ( e.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
-						cout<< e.button.x<<endl;
+						cout<< e.button.x<<"   "<<e.button.y<<endl;
 					}
 
 				}
@@ -232,16 +233,21 @@ int main( int argc, char* args[] )
 							delete ball;
 							ball = nullptr;
 						}
-						ball = new Ball(gRenderer, make_tuple(0,400));
+						// ball = new Ball(gRenderer, make_tuple(0,400));
+						ball = new Ball(gRenderer, make_tuple(0,250));
 						cout<<"Create new ball"<<endl;
 					} 
 				}
 				if(game != START){
+					ball->renderBallEffects();
 					for (auto character : characters) {
 						if(game == SETUP){
 							character->setPosition();
 							character->SetAIControl(ball);
 							cout<<"Set AI"<<endl;
+						}
+						if(count++ > 20){
+							character->UpdateAI();
 						}
 						character->getKeyboardEvent(key);
 						character->update_position();
@@ -250,6 +256,7 @@ int main( int argc, char* args[] )
 							ball->checkCollision(character); // nguoi danh dc bong
 						}
 					}
+					if(count++ > 20){count=0;}
 					if(game != SETUP){          // RUN, PAUSE
 						if(!ball->Isdead()){
 							if(ball->update_position() && game != PAUSE){

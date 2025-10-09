@@ -90,6 +90,7 @@ private:
     int max_frame;
     int speed = 12;
     SDL_Texture* surface;
+    SDL_Texture* muiten;
     SDL_FRect srcRect;
     SDL_FRect dstRect;
     int y0 = 0;
@@ -114,9 +115,11 @@ public:
     void SetAIControl(Ball* ball);
     void setPosition(){
         this->position = this->pos_0;
+        this->status = PlayerAction::Idle;
     }
     string GetName(){return this->name;}
     PlayerAction GetStatus(){return this->status;}
+    void UpdateAI();
 };  
 
 // inline float deg2rad(float deg){ return deg * 3.14159265358979323846f / 180.0f; }
@@ -173,5 +176,10 @@ public:
         return this->motition->SolveEquation(y);
     }
     float GetX(){return float(get<0>(this->position));}
+    float GetY(){return float(get<1>(this->position));}
     bool is_new_motition(){return this->create_new_motition;}
+    void renderBallEffects();
+    void print(){
+        cout<< "Ball:  x: "<<get<0>(this->position)<<"   y: "<<get<1>(this->position)<<endl;
+    }
 };
