@@ -85,10 +85,10 @@ void Character::render(){
     // SDL_BlitSurfaceScaled(this->surface, &this->srcRect, screenSurface, &this->dstRect, SDL_SCALEMODE_LINEAR);
 }
 
-void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
+void Character::getKeyboardEvent(SDL_Scancode keyEvent){
     PlayerAction curr_status = this->status;
     if(this->is_control){
-        if (keyEvent.type == SDL_EVENT_KEY_UP){
+        if (keyEvent == SDL_SCANCODE_UNKNOWN){
             if(this->y0){ 
                     // cout<<this->y0<<endl;
                     get<1>(this->position) = this->y0;
@@ -97,7 +97,7 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
             this->status = PlayerAction::Idle;
         }
         else{
-            if(keyEvent.scancode == this->keymap.up){
+            if(keyEvent == this->keymap.up){
                 if(!this->y0){ 
                     this->y0 = get<1>(this->position);
                     // cout<<this->y0<<endl;
@@ -110,13 +110,13 @@ void Character::getKeyboardEvent(SDL_KeyboardEvent keyEvent){
                     get<1>(this->position) = this->y0;
                     this->y0=0;
                 }
-                if(keyEvent.scancode == this->keymap.left){
+                if(keyEvent == this->keymap.left){
                     this->status = PlayerAction::MoveBackward;
                 }
-                else if(keyEvent.scancode == this->keymap.right){
+                else if(keyEvent == this->keymap.right){
                     this->status = PlayerAction::MoveForward;
                 }
-                else if(keyEvent.scancode == this->keymap.down){
+                else if(keyEvent == this->keymap.down){
                     this->status = PlayerAction::Pass;
                 }
                 else{
@@ -281,9 +281,9 @@ Ball:: Ball(SDL_Renderer* gRenderer, tuple<int, int> position, string a){
     this->srcRect = {0, 5, 15, 15};
     this->dstRect = {float(get<0>(position)), float(get<1>(position)), 15*2, 15*2};
     float theta = (a=="LEFT")?1*M_PI/24:M_PI - 1*M_PI/24;
-    // this->motition = new MotionEquation(theta, 100, get<0>(position), get<1>(position));
-    Vec2 vec_a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(500,470));
-    this->motition = new MotionEquation(M_PI/4,100,get<0>(position), get<1>(position),vec_a);
+    this->motition = new MotionEquation(theta, 100, get<0>(position), get<1>(position));
+    // Vec2 vec_a = direction_vector_A_to_B(Vec2(float(get<0>(position)), float(get<1>(position))), Vec2(500,470));
+    // this->motition = new MotionEquation(M_PI/4,100,get<0>(position), get<1>(position),vec_a);
     // cout<< this->motition->print()<<endl;
     this->y_dubao = SAN_BALL+30 - 5.66*4;
     this->x_dubao = this->motition->SolveEquation();

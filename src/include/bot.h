@@ -106,7 +106,7 @@ public:
     ~Character();
     void render();
     void update_position();
-    void getKeyboardEvent(SDL_KeyboardEvent keyEvent);
+    void getKeyboardEvent(SDL_Scancode keyEvent);
     CharCollisionBall checkCollision(const SDL_FRect& b);
     void changeControl(){this->is_control = !this->is_control;}
     float GetY(){return float(get<1>(this->position));}
